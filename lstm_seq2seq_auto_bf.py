@@ -63,11 +63,11 @@ set_session(tf.Session(config=config))
 
 
 batch_size = 64  # Batch size for training.
-epochs = 300  # Number of epochs to train for.
+epochs = 10  # Number of epochs to train for.
 latent_dim = 512  # Latent dimensionality of the encoding space.
-num_samples = 500000  # Number of samples to train on.
+num_samples = 4000000  # Number of samples to train on.
 # Path to the data txt file on disk.
-data_path = 'training2.txt'
+data_path = 'training4.txt'
 
 # Vectorize the data.
 input_texts = []
@@ -188,13 +188,15 @@ def decode_sequence(input_seq):
     # Generate empty target sequence of length 1.
     target_seq = np.zeros((1, 1, num_encoder_tokens))
     # Populate the first character of target sequence with the start character.
-    target_seq[0, 0, target_token_index['\t']] = 1.
+    target_seq[0, 0, :] = input_seq[0, 0, :]
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
     stop_condition = False
     decoded_sentence = ''
-    while not stop_condition:
+    foo=0
+    while foo < input_seq.shape[1]:
+        target_seq[0, 0, :] = input_seq[0, foo, :]
         output_tokens, h, c = decoder_model.predict(
             [target_seq] + states_value)
 
@@ -215,7 +217,7 @@ def decode_sequence(input_seq):
 
         # Update states
         states_value = [h, c]
-
+        foo = foo+1
     return decoded_sentence
 
 
@@ -225,5 +227,5 @@ for seq_index in range(200):
     input_seq = encoder_input_data[seq_index: seq_index + 1]
     decoded_sentence = decode_sequence(input_seq)
     print('-')
-    print('Input sentence:', input_texts[seq_index])
+    print('Input sentence:  ', input_texts[seq_index])
     print('Decoded sentence:', decoded_sentence)
