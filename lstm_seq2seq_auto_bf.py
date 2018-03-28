@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 '''Sequence to sequence example in Keras (character-level).
 
 This script demonstrates how to implement a basic character-level
@@ -62,9 +62,9 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.29
 set_session(tf.Session(config=config))
 
 
-batch_size = 64  # Batch size for training.
-epochs = 10  # Number of epochs to train for.
-latent_dim = 512  # Latent dimensionality of the encoding space.
+batch_size = 128  # Batch size for training.
+epochs = 25  # Number of epochs to train for.
+latent_dim = 32  # Latent dimensionality of the encoding space.
 num_samples = 4000000  # Number of samples to train on.
 # Path to the data txt file on disk.
 data_path = 'training4.txt'
