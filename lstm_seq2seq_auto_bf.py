@@ -79,7 +79,8 @@ for line in lines[: min(num_samples, len(lines) - 1)]:
     input_text, target_text = line.split('\t')
     # We use "tab" as the "start sequence" character
     # for the targets, and "\n" as "end sequence" character.
-    #target_text = '\t' + target_text + '\n'
+    input_text = input_text + '\n'
+    target_text = target_text + '\n'
     input_texts.append(input_text)
     target_texts.append(target_text)
     for char in input_text:
@@ -195,7 +196,7 @@ def decode_sequence(input_seq):
     stop_condition = False
     decoded_sentence = ''
     foo=0
-    while foo < input_seq.shape[1]:
+    while foo < input_seq.shape[1] and not stop_condition:
         target_seq[0, 0, :] = input_seq[0, foo, :]
         output_tokens, h, c = decoder_model.predict(
             [target_seq] + states_value)
