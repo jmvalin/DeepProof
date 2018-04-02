@@ -52,7 +52,7 @@ http://www.manythings.org/anki/
 from __future__ import print_function
 
 from keras.models import Model
-from keras.layers import Input, LSTM, CuDNNLSTM, Dense
+from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding
 import numpy as np
 
 import tensorflow as tf
@@ -65,7 +65,7 @@ set_session(tf.Session(config=config))
 batch_size = 128  # Batch size for training.
 epochs = 25  # Number of epochs to train for.
 latent_dim = 32  # Latent dimensionality of the encoding space.
-num_samples = 4000000  # Number of samples to train on.
+num_samples = 500000  # Number of samples to train on.
 # Path to the data txt file on disk.
 data_path = 'training4.txt'
 
@@ -79,8 +79,8 @@ for line in lines[: min(num_samples, len(lines) - 1)]:
     input_text, target_text = line.split('\t')
     # We use "tab" as the "start sequence" character
     # for the targets, and "\n" as "end sequence" character.
-    input_text = input_text + '\n'
-    target_text = target_text + '\n'
+    input_text = input_text + '\n\n\n'
+    target_text = '  ' + target_text + '\n'
     input_texts.append(input_text)
     target_texts.append(target_text)
     for char in input_text:
@@ -107,8 +107,8 @@ target_token_index = dict(
 encoder_input_data = np.zeros(
     (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
     dtype='int8')
-decoder_input_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, num_encoder_tokens),
+input_data = np.zeros(
+    (len(input_texts), max_decoder_seq_length),
     dtype='int8')
 decoder_target_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_encoder_tokens),
@@ -117,24 +117,27 @@ decoder_target_data = np.zeros(
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     for t, char in enumerate(input_text):
         encoder_input_data[i, t, target_token_index[char]] = 1.
+    for t, char in enumerate(input_text):
+        input_data[i, t] = target_token_index[char]
     for t, char in enumerate(target_text):
         # decoder_target_data is ahead of decoder_input_data by one timestep
         decoder_target_data[i, t, target_token_index[char]] = 1.
 
 # Define an input sequence and process it.
-encoder_inputs = Input(shape=(None, num_encoder_tokens))
+encoder_inputs = Input(shape=(None, ))
+embed = Embedding(num_encoder_tokens, 2*latent_dim)
 encoder = CuDNNLSTM(latent_dim, return_state=True, go_backwards=True)
-encoder_outputs, state_h, state_c = encoder(encoder_inputs)
+encoder_outputs, state_h, state_c = encoder(embed(encoder_inputs))
 # We discard `encoder_outputs` and only keep the states.
 encoder_states = [state_h, state_c]
 
 # Set up the decoder, using `encoder_states` as initial state.
-decoder_inputs = Input(shape=(None, num_encoder_tokens))
+decoder_inputs = Input(shape=(None, ))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
 decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
-decoder_outputs, _, _ = decoder_lstm(decoder_inputs,
+decoder_outputs, _, _ = decoder_lstm(embed(decoder_inputs),
                                      initial_state=encoder_states)
 decoder_dense = Dense(num_encoder_tokens, activation='softmax')
 decoder_outputs = decoder_dense(decoder_outputs)
@@ -145,7 +148,7 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 # Run training
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-model.fit([encoder_input_data, encoder_input_data], decoder_target_data,
+model.fit([input_data, input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
@@ -167,7 +170,7 @@ decoder_state_input_h = Input(shape=(latent_dim,))
 decoder_state_input_c = Input(shape=(latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
 decoder_outputs, state_h, state_c = decoder_lstm(
-    decoder_inputs, initial_state=decoder_states_inputs)
+    embed(decoder_inputs), initial_state=decoder_states_inputs)
 decoder_states = [state_h, state_c]
 decoder_outputs = decoder_dense(decoder_outputs)
 decoder_model = Model(
@@ -187,9 +190,9 @@ def decode_sequence(input_seq):
     states_value = encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
-    target_seq = np.zeros((1, 1, num_encoder_tokens))
+    target_seq = np.zeros((1, 1))
     # Populate the first character of target sequence with the start character.
-    target_seq[0, 0, :] = input_seq[0, 0, :]
+    target_seq[0, 0] = input_seq[0, 0]
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
@@ -197,7 +200,7 @@ def decode_sequence(input_seq):
     decoded_sentence = ''
     foo=0
     while foo < input_seq.shape[1] and not stop_condition:
-        target_seq[0, 0, :] = input_seq[0, foo, :]
+        target_seq[0, 0] = input_seq[0, foo]
         output_tokens, h, c = decoder_model.predict(
             [target_seq] + states_value)
 
@@ -213,8 +216,8 @@ def decode_sequence(input_seq):
             stop_condition = True
 
         # Update the target sequence (of length 1).
-        target_seq = np.zeros((1, 1, num_encoder_tokens))
-        target_seq[0, 0, sampled_token_index] = 1.
+        target_seq = np.zeros((1, 1))
+        target_seq[0, 0] = sampled_token_index
 
         # Update states
         states_value = [h, c]
@@ -225,7 +228,7 @@ def decode_sequence(input_seq):
 for seq_index in range(200):
     # Take one sequence (part of the training test)
     # for trying out decoding.
-    input_seq = encoder_input_data[seq_index: seq_index + 1]
+    input_seq = input_data[seq_index: seq_index + 1]
     decoded_sentence = decode_sequence(input_seq)
     print('-')
     print('Input sentence:  ', input_texts[seq_index])
