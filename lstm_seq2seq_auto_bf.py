@@ -52,7 +52,7 @@ http://www.manythings.org/anki/
 from __future__ import print_function
 
 from keras.models import Model
-from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding
+from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape
 import numpy as np
 
 import tensorflow as tf
@@ -104,11 +104,8 @@ print('Max sequence length for outputs:', max_decoder_seq_length)
 target_token_index = dict(
     [(char, i) for i, char in enumerate(input_characters)])
 
-encoder_input_data = np.zeros(
-    (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
-    dtype='int8')
 input_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length),
+    (len(input_texts), max_decoder_seq_length, 1),
     dtype='int8')
 decoder_target_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_encoder_tokens),
@@ -116,28 +113,28 @@ decoder_target_data = np.zeros(
 
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     for t, char in enumerate(input_text):
-        encoder_input_data[i, t, target_token_index[char]] = 1.
-    for t, char in enumerate(input_text):
-        input_data[i, t] = target_token_index[char]
+        input_data[i, t, 0] = target_token_index[char]
     for t, char in enumerate(target_text):
         # decoder_target_data is ahead of decoder_input_data by one timestep
         decoder_target_data[i, t, target_token_index[char]] = 1.
 
 # Define an input sequence and process it.
-encoder_inputs = Input(shape=(None, ))
+encoder_inputs = Input(shape=(None, 1))
+reshape = Reshape((-1, 2*latent_dim))
 embed = Embedding(num_encoder_tokens, 2*latent_dim)
 encoder = CuDNNLSTM(latent_dim, return_state=True, go_backwards=True)
-encoder_outputs, state_h, state_c = encoder(embed(encoder_inputs))
+encoder_outputs, state_h, state_c = encoder(reshape(embed(encoder_inputs)))
 # We discard `encoder_outputs` and only keep the states.
 encoder_states = [state_h, state_c]
 
 # Set up the decoder, using `encoder_states` as initial state.
-decoder_inputs = Input(shape=(None, ))
+decoder_inputs = Input(shape=(None, 1))
+reshape2 = Reshape((-1, 2*latent_dim))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
 decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
-decoder_outputs, _, _ = decoder_lstm(embed(decoder_inputs),
+decoder_outputs, _, _ = decoder_lstm(reshape2(embed(decoder_inputs)),
                                      initial_state=encoder_states)
 decoder_dense = Dense(num_encoder_tokens, activation='softmax')
 decoder_outputs = decoder_dense(decoder_outputs)
@@ -170,7 +167,7 @@ decoder_state_input_h = Input(shape=(latent_dim,))
 decoder_state_input_c = Input(shape=(latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
 decoder_outputs, state_h, state_c = decoder_lstm(
-    embed(decoder_inputs), initial_state=decoder_states_inputs)
+    reshape(embed(decoder_inputs)), initial_state=decoder_states_inputs)
 decoder_states = [state_h, state_c]
 decoder_outputs = decoder_dense(decoder_outputs)
 decoder_model = Model(
@@ -190,9 +187,9 @@ def decode_sequence(input_seq):
     states_value = encoder_model.predict(input_seq)
 
     # Generate empty target sequence of length 1.
-    target_seq = np.zeros((1, 1))
+    target_seq = np.zeros((1, 1, 1))
     # Populate the first character of target sequence with the start character.
-    target_seq[0, 0] = input_seq[0, 0]
+    target_seq[0, 0, 0] = input_seq[0, 0, 0]
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
@@ -200,7 +197,7 @@ def decode_sequence(input_seq):
     decoded_sentence = ''
     foo=0
     while foo < input_seq.shape[1] and not stop_condition:
-        target_seq[0, 0] = input_seq[0, foo]
+        target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c = decoder_model.predict(
             [target_seq] + states_value)
 
@@ -216,8 +213,8 @@ def decode_sequence(input_seq):
             stop_condition = True
 
         # Update the target sequence (of length 1).
-        target_seq = np.zeros((1, 1))
-        target_seq[0, 0] = sampled_token_index
+        target_seq = np.zeros((1, 1, 1))
+        target_seq[0, 0, 0] = sampled_token_index
 
         # Update states
         states_value = [h, c]
