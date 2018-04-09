@@ -79,8 +79,8 @@ for line in lines[: min(num_samples, len(lines) - 1)]:
     input_text, target_text = line.split('\t')
     # We use "tab" as the "start sequence" character
     # for the targets, and "\n" as "end sequence" character.
-    input_text = input_text + '\n\n\n'
-    target_text = '  ' + target_text + '\n'
+    input_text = input_text + '\n'
+    target_text = target_text + '\n'
     input_texts.append(input_text)
     target_texts.append(target_text)
     for char in input_text:
@@ -105,7 +105,7 @@ target_token_index = dict(
     [(char, i) for i, char in enumerate(input_characters)])
 
 input_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, 1),
+    (len(input_texts), max_decoder_seq_length, 2),
     dtype='int8')
 decoder_target_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_encoder_tokens),
@@ -114,22 +114,25 @@ decoder_target_data = np.zeros(
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     for t, char in enumerate(input_text):
         input_data[i, t, 0] = target_token_index[char]
+    foo=target_text[0]
     for t, char in enumerate(target_text):
         # decoder_target_data is ahead of decoder_input_data by one timestep
         decoder_target_data[i, t, target_token_index[char]] = 1.
+        input_data[i, t, 1] = target_token_index[foo]
+        foo=char
 
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, 1))
-reshape = Reshape((-1, 2*latent_dim))
+reshape1 = Reshape((-1, 2*latent_dim))
+reshape2 = Reshape((-1, 4*latent_dim))
 embed = Embedding(num_encoder_tokens, 2*latent_dim)
 encoder = CuDNNLSTM(latent_dim, return_state=True, go_backwards=True)
-encoder_outputs, state_h, state_c = encoder(reshape(embed(encoder_inputs)))
+encoder_outputs, state_h, state_c = encoder(reshape1(embed(encoder_inputs)))
 # We discard `encoder_outputs` and only keep the states.
 encoder_states = [state_h, state_c]
 
 # Set up the decoder, using `encoder_states` as initial state.
-decoder_inputs = Input(shape=(None, 1))
-reshape2 = Reshape((-1, 2*latent_dim))
+decoder_inputs = Input(shape=(None, 2))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
@@ -145,7 +148,8 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 # Run training
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-model.fit([input_data, input_data], decoder_target_data,
+model.summary()
+model.fit([input_data[:,:,0:1], input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
@@ -167,7 +171,7 @@ decoder_state_input_h = Input(shape=(latent_dim,))
 decoder_state_input_c = Input(shape=(latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
 decoder_outputs, state_h, state_c = decoder_lstm(
-    reshape(embed(decoder_inputs)), initial_state=decoder_states_inputs)
+    reshape2(embed(decoder_inputs)), initial_state=decoder_states_inputs)
 decoder_states = [state_h, state_c]
 decoder_outputs = decoder_dense(decoder_outputs)
 decoder_model = Model(
@@ -184,12 +188,12 @@ reverse_target_char_index = dict(
 
 def decode_sequence(input_seq):
     # Encode the input as state vectors.
-    states_value = encoder_model.predict(input_seq)
+    states_value = encoder_model.predict(input_seq[:,:,0:1])
 
     # Generate empty target sequence of length 1.
-    target_seq = np.zeros((1, 1, 1))
+    target_seq = np.zeros((1, 1, 2))
     # Populate the first character of target sequence with the start character.
-    target_seq[0, 0, 0] = input_seq[0, 0, 0]
+    target_seq[0, 0, :] = input_seq[0, 0, :]
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
@@ -213,8 +217,9 @@ def decode_sequence(input_seq):
             stop_condition = True
 
         # Update the target sequence (of length 1).
-        target_seq = np.zeros((1, 1, 1))
+        target_seq = np.zeros((1, 1, 2))
         target_seq[0, 0, 0] = sampled_token_index
+        target_seq[0, 0, 1] = sampled_token_index
 
         # Update states
         states_value = [h, c]
