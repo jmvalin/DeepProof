@@ -108,7 +108,7 @@ input_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, 2),
     dtype='int8')
 decoder_target_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, num_encoder_tokens),
+    (len(input_texts), max_decoder_seq_length, 1),
     dtype='int8')
 
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
@@ -117,7 +117,7 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     foo=target_text[0]
     for t, char in enumerate(target_text):
         # decoder_target_data is ahead of decoder_input_data by one timestep
-        decoder_target_data[i, t, target_token_index[char]] = 1.
+        decoder_target_data[i, t, 0] = target_token_index[char]
         input_data[i, t, 1] = target_token_index[foo]
         foo=char
 
@@ -147,7 +147,7 @@ decoder_outputs = decoder_dense(decoder_outputs)
 model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 # Run training
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.summary()
 model.fit([input_data[:,:,0:1], input_data], decoder_target_data,
           batch_size=batch_size,
