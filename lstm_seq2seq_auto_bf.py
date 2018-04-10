@@ -103,6 +103,9 @@ print('Max sequence length for outputs:', max_decoder_seq_length)
 
 target_token_index = dict(
     [(char, i) for i, char in enumerate(input_characters)])
+charid = np.zeros(128, dtype='uint8')
+for i, char in enumerate(input_characters):
+    charid[ord(char)] = i
 
 input_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, 2),
@@ -112,14 +115,15 @@ decoder_target_data = np.zeros(
     dtype='int8')
 
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
-    for t, char in enumerate(input_text):
-        input_data[i, t, 0] = target_token_index[char]
-    foo=target_text[0]
-    for t, char in enumerate(target_text):
-        # decoder_target_data is ahead of decoder_input_data by one timestep
-        decoder_target_data[i, t, 0] = target_token_index[char]
-        input_data[i, t, 1] = target_token_index[foo]
-        foo=char
+    tmp = charid[np.array(input_text, 'c').view(dtype=np.uint8)]
+    input_data[i, 0:len(tmp), 0] = tmp
+    
+    tmp = charid[np.array(target_text, 'c').view(dtype=np.uint8)]
+    decoder_target_data[i, 0:len(tmp), 0] = tmp
+    
+    input_data[i, 0, 1] = input_data[i, 0, 0]
+    input_data[i, 1:len(tmp), 1] = decoder_target_data[i, 0:len(tmp)-1, 0]
+    
 
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, 1))
