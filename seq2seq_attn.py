@@ -62,13 +62,13 @@ config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.29
 set_session(tf.Session(config=config))
 
-
+embed_dim = 64
 batch_size = 128  # Batch size for training.
-epochs = 25  # Number of epochs to train for.
-latent_dim = 32  # Latent dimensionality of the encoding space.
-num_samples = 500000  # Number of samples to train on.
+epochs = 40  # Number of epochs to train for.
+latent_dim = 512  # Latent dimensionality of the encoding space.
+num_samples = 2000000  # Number of samples to train on.
 # Path to the data txt file on disk.
-data_path = 'training4.txt'
+data_path = 'mistakes.txt'
 
 # Vectorize the data.
 input_texts = []
@@ -102,6 +102,8 @@ print('Number of unique input tokens:', num_encoder_tokens)
 print('Max sequence length for inputs:', max_encoder_seq_length)
 print('Max sequence length for outputs:', max_decoder_seq_length)
 
+max_decoder_seq_length = max_encoder_seq_length = max(max_decoder_seq_length, max_encoder_seq_length)
+
 target_token_index = dict(
     [(char, i) for i, char in enumerate(input_characters)])
 charid = np.zeros(128, dtype='uint8')
@@ -128,9 +130,9 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
 
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, 1))
-reshape1 = Reshape((-1, 2*latent_dim))
-reshape2 = Reshape((-1, 4*latent_dim))
-embed = Embedding(num_encoder_tokens, 2*latent_dim)
+reshape1 = Reshape((-1, embed_dim))
+reshape2 = Reshape((-1, embed_dim))
+embed = Embedding(num_encoder_tokens, embed_dim)
 encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
 encoder_outputs, state_h, state_c = encoder(reshape1(embed(encoder_inputs)))
 rev = Lambda(lambda x: K.reverse(x, 1))
@@ -146,8 +148,6 @@ decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
 
 dec_lstm_input = reshape1(embed(decoder_inputs))
 dec_lstm_input = Concatenate()([dec_lstm_input, encoder_outputs])
-
-print(dec_lstm_input)
 
 decoder_outputs, _, _ = decoder_lstm(dec_lstm_input,
                                     initial_state=encoder_states)
@@ -177,17 +177,18 @@ model.save('s2s.h5')
 # 3) Repeat with the current target token and current states
 
 # Define sampling models
-encoder_model = Model(encoder_inputs, encoder_states)
+encoder_model = Model(encoder_inputs, [encoder_outputs, state_h, state_c])
 
 decoder_state_input_h = Input(shape=(latent_dim,))
 decoder_state_input_c = Input(shape=(latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+decoder_enc_inputs = Input(shape=(None, latent_dim))
 decoder_outputs, state_h, state_c = decoder_lstm(
-    reshape2(embed(decoder_inputs)), initial_state=decoder_states_inputs)
+    Concatenate()([reshape1(embed(decoder_inputs)), decoder_enc_inputs]), initial_state=decoder_states_inputs)
 decoder_states = [state_h, state_c]
 decoder_outputs = decoder_dense(decoder_outputs)
 decoder_model = Model(
-    [decoder_inputs] + decoder_states_inputs,
+    [decoder_inputs, decoder_enc_inputs] + decoder_states_inputs,
     [decoder_outputs] + decoder_states)
 
 # Reverse-lookup token index to decode sequences back to
@@ -200,12 +201,13 @@ reverse_target_char_index = dict(
 
 def decode_sequence(input_seq):
     # Encode the input as state vectors.
-    states_value = encoder_model.predict(input_seq[:,:,0:1])
+    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
+    states_value = [state_h, state_c]
 
     # Generate empty target sequence of length 1.
-    target_seq = np.zeros((1, 1, 2))
+    target_seq = np.zeros((1, 1, 1))
     # Populate the first character of target sequence with the start character.
-    target_seq[0, 0, :] = input_seq[0, 0, :]
+    target_seq[0, 0, :] = input_seq[0, 0, 0]
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
@@ -213,9 +215,9 @@ def decode_sequence(input_seq):
     decoded_sentence = ''
     foo=0
     while foo < input_seq.shape[1] and not stop_condition:
-        target_seq[0, 0, 0] = input_seq[0, foo, 0]
+        #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c = decoder_model.predict(
-            [target_seq] + states_value)
+            [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
 
         # Sample a token
         sampled_token_index = np.argmax(output_tokens[0, -1, :])
@@ -229,9 +231,8 @@ def decode_sequence(input_seq):
             stop_condition = True
 
         # Update the target sequence (of length 1).
-        target_seq = np.zeros((1, 1, 2))
+        target_seq = np.zeros((1, 1, 1))
         target_seq[0, 0, 0] = sampled_token_index
-        target_seq[0, 0, 1] = sampled_token_index
 
         # Update states
         states_value = [h, c]
