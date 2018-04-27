@@ -52,7 +52,7 @@ http://www.manythings.org/anki/
 from __future__ import print_function
 
 from keras.models import Model
-from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda
+from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
 from keras import backend as K
 import numpy as np
 
@@ -132,9 +132,10 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
 encoder_inputs = Input(shape=(None, 1))
 reshape1 = Reshape((-1, embed_dim))
 reshape2 = Reshape((-1, embed_dim))
+conv = Conv1D(latent_dim, 5, padding='same', activation='tanh')
 embed = Embedding(num_encoder_tokens, embed_dim)
 encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
-encoder_outputs, state_h, state_c = encoder(reshape1(embed(encoder_inputs)))
+encoder_outputs, state_h, state_c = encoder(conv(reshape1(embed(encoder_inputs))))
 rev = Lambda(lambda x: K.reverse(x, 1))
 encoder_outputs = rev(encoder_outputs)
 encoder_states = [state_h, state_c]

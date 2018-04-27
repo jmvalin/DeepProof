@@ -5,12 +5,26 @@ import random
 import math
 
 verbs_rules = [["has", "have", "had"],
-               ["was", "were", "are", "is"]
+               ["was", "were", "are", "is"],
+               ["go", "gone", "went", "goes"],
+               ["be", "been"]
               ]
 
 homonyms_rules = [["there", "their"],
                   ["to", "too", "two"],
+                  ["break", "brake"]
                  ]
+
+prepositions_rules = [["to", "at", "in"],
+                      ["out", "off"],
+                      ["on", "over"]
+                     ]
+
+misc_rules = [["the", "a"],
+              ["you", "your"],
+              ["I", "me"],
+              ["this", "that"]
+             ]
 
 def word_substitute(line, rules, prob):
     for group in rules:
@@ -75,6 +89,8 @@ for line in sys.stdin:
     orig = line;
     line = word_substitute(line, verbs_rules, 0.2)
     line = word_substitute(line, homonyms_rules, 0.2)
+    line = word_substitute(line, prepositions_rules, 0.2)
+    line = word_substitute(line, misc_rules, 0.2)
     line = letter_deletion(line, 0.01)
     line = letter_doubling(line, 0.01)
     line = letter_swap(line, 0.01)
