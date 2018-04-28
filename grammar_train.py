@@ -137,7 +137,9 @@ embed = Embedding(num_encoder_tokens, embed_dim)
 encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
 encoder_outputs, state_h, state_c = encoder(conv(reshape1(embed(encoder_inputs))))
 rev = Lambda(lambda x: K.reverse(x, 1))
-encoder_outputs = rev(encoder_outputs)
+conv2 = Conv1D(latent_dim, 5, padding='same', activation='tanh')
+
+encoder_outputs = conv2(rev(encoder_outputs))
 encoder_states = [state_h, state_c]
 
 # Set up the decoder, using `encoder_states` as initial state.
