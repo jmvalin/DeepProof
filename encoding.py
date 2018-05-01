@@ -27,6 +27,7 @@ def encode_string(string, outlen, offset):
     copylen = min(strlen,outlen - 2)
     for i, char in enumerate(string[offset:copylen+offset]):
         out[i+1] = charid[min(maxord,ord(char))]
+    return out
     
 def decode_string(enc):
     out = ''.join([char_list[x] for x in enc])
