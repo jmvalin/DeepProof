@@ -55,6 +55,9 @@ from keras.models import Model
 from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
 from keras import backend as K
 import numpy as np
+import h5py
+import sys
+import encoding
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -66,9 +69,10 @@ embed_dim = 64
 batch_size = 128  # Batch size for training.
 epochs = 10  # Number of epochs to train for.
 latent_dim = 64  # Latent dimensionality of the encoding space.
+'''
 num_samples = 8000000  # Number of samples to train on.
 # Path to the data txt file on disk.
-data_path = 'mistakes.txt'
+data_path = 'mistakes2.txt'
 
 # Vectorize the data.
 input_texts = []
@@ -126,7 +130,17 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     
     input_data[i, 0, 1] = input_data[i, 0, 0]
     input_data[i, 1:len(tmp), 1] = decoder_target_data[i, 0:len(tmp)-1, 0]
-    
+'''    
+with h5py.File(sys.argv[1], 'r') as hf:
+    input_text = hf['input'][:]
+    output_text = hf['output'][:]
+input_data = np.reshape(input_text, (input_text.shape[0], input_text.shape[1], 1))
+decoder_target_data = np.reshape(output_text, (output_text.shape[0], output_text.shape[1], 1))
+decoder_input_data = np.zeros((input_text.shape[0], input_text.shape[1], 1), dtype='uint8')
+decoder_input_data[:,1:,:] = decoder_target_data[:,:-1,:]
+max_decoder_seq_length = input_text.shape[1]
+num_encoder_tokens = len(encoding.char_list)
+
 
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, 1))
@@ -164,7 +178,7 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 # Run training
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.summary()
-model.fit([input_data[:,:,0:1], input_data[:,:,1:2]], decoder_target_data,
+model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
