@@ -67,8 +67,8 @@ set_session(tf.Session(config=config))
 
 embed_dim = 64
 batch_size = 128  # Batch size for training.
-epochs = 10  # Number of epochs to train for.
-latent_dim = 64  # Latent dimensionality of the encoding space.
+epochs = 8  # Number of epochs to train for.
+latent_dim = 128  # Latent dimensionality of the encoding space.
 '''
 num_samples = 8000000  # Number of samples to train on.
 # Path to the data txt file on disk.
@@ -134,6 +134,8 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
 with h5py.File(sys.argv[1], 'r') as hf:
     input_text = hf['input'][:]
     output_text = hf['output'][:]
+#input_text = input_text[0:8000, :]
+#output_text = output_text[0:8000, :]
 input_data = np.reshape(input_text, (input_text.shape[0], input_text.shape[1], 1))
 decoder_target_data = np.reshape(output_text, (output_text.shape[0], output_text.shape[1], 1))
 decoder_input_data = np.zeros((input_text.shape[0], input_text.shape[1], 1), dtype='uint8')
@@ -141,6 +143,9 @@ decoder_input_data[:,1:,:] = decoder_target_data[:,:-1,:]
 max_decoder_seq_length = input_text.shape[1]
 num_encoder_tokens = len(encoding.char_list)
 
+print("Number of sentences: ", input_text.shape[0])
+print("Sentence length: ", input_text.shape[1])
+print("Number of chars: ", num_encoder_tokens)
 
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, 1))
@@ -208,14 +213,6 @@ decoder_model = Model(
     [decoder_inputs, decoder_enc_inputs] + decoder_states_inputs,
     [decoder_outputs] + decoder_states)
 
-# Reverse-lookup token index to decode sequences back to
-# something readable.
-reverse_input_char_index = dict(
-    (i, char) for char, i in target_token_index.items())
-reverse_target_char_index = dict(
-    (i, char) for char, i in target_token_index.items())
-
-
 def decode_sequence(input_seq):
     # Encode the input as state vectors.
     encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
@@ -238,12 +235,12 @@ def decode_sequence(input_seq):
 
         # Sample a token
         sampled_token_index = np.argmax(output_tokens[0, -1, :])
-        sampled_char = reverse_target_char_index[sampled_token_index]
+        sampled_char = encoding.char_list[sampled_token_index]
         decoded_sentence += sampled_char
 
         # Exit condition: either hit max length
         # or find stop character.
-        if (sampled_char == '\n' or
+        if ((foo > 1 and sampled_token_index <= 1) or
            len(decoded_sentence) > max_decoder_seq_length):
             stop_condition = True
 
@@ -263,5 +260,5 @@ for seq_index in range(200):
     input_seq = input_data[seq_index: seq_index + 1]
     decoded_sentence = decode_sequence(input_seq)
     print('-')
-    print('Input sentence:  ', input_texts[seq_index])
+    print('Input sentence:  ', encoding.decode_string(input_text[seq_index,:]))
     print('Decoded sentence:', decoded_sentence)
