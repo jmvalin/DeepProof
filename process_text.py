@@ -9,7 +9,7 @@ import h5py
 
 maxlen = 300
 minlen = 80
-frac = .1
+frac = .4
 
 text = []
 
@@ -55,18 +55,19 @@ for line in sys.stdin:
     orig = line;
     #print (orig)
     #continue
-    line = word_substitute(line, verbs_rules, 0.2)
-    line = word_substitute(line, homonyms_rules, 0.2)
-    line = word_substitute(line, prepositions_rules, 0.2)
-    line = word_substitute(line, misc_rules, 0.2)
-    line = letter_deletion(line, 0.01)
-    line = letter_doubling(line, 0.01)
-    line = letter_swap(line, 0.01)
+    line = word_substitute(line, verbs_rules, 0.1)
+    line = word_substitute(line, homonyms_rules, 0.1)
+    line = word_substitute(line, prepositions_rules, 0.1)
+    line = word_substitute(line, misc_rules, 0.1)
+    line = letter_deletion(line, 0.005)
+    line = letter_doubling(line, 0.005)
+    line = letter_swap(line, 0.005)
+    line = letter_subst(line, 0.005)
     
     text.append((line, orig, chop_begin, chop_end, orig_len))
     #if len(text) > 1000:
     #    break
-    #print (line, '\t', orig)
+    print (line, '\t', orig)
 
 input_text = np.zeros((len(text), maxlen), dtype='uint8')
 output_text = np.zeros((len(text), maxlen), dtype='uint8')
