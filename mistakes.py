@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import random
 import math
@@ -26,6 +27,8 @@ misc_rules = [["the", "a"],
               ["this", "that"],
               ["excepted", "accepted"],
               ["affect", "effect"],
+              ["affects", "effects"],
+              ["affected", "effected"],
               ["your", "you're"],
               ["who", "that"],
               ["who", "whom", "whose", "who's"],

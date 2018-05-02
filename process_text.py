@@ -13,6 +13,7 @@ frac = .4
 
 text = []
 
+print("Computing lines")
 for line in sys.stdin:
     if random.random() > frac:
         continue
@@ -27,6 +28,7 @@ for line in sys.stdin:
         continue
     if re.match("\([0-9][0-9][0-9][0-9]\)", line):
         continue
+    line = " ".join(line.split())
     orig_len = strlen = len(line)
     #print(line)
     chop_begin = chop_end = False
@@ -55,20 +57,23 @@ for line in sys.stdin:
     orig = line;
     #print (orig)
     #continue
-    line = word_substitute(line, verbs_rules, 0.1)
-    line = word_substitute(line, homonyms_rules, 0.1)
-    line = word_substitute(line, prepositions_rules, 0.1)
-    line = word_substitute(line, misc_rules, 0.1)
+    line = word_substitute(line, verbs_rules, 0.15)
+    line = word_substitute(line, homonyms_rules, 0.15)
+    line = word_substitute(line, prepositions_rules, 0.15)
+    line = word_substitute(line, misc_rules, 0.15)
     line = letter_deletion(line, 0.005)
     line = letter_doubling(line, 0.005)
     line = letter_swap(line, 0.005)
-    line = letter_subst(line, 0.005)
+    line = letter_subst(line, 0.002)
+    if len(text) % 1000000 == 0:
+        print(len(text))
     
     text.append((line, orig, chop_begin, chop_end, orig_len))
     #if len(text) > 1000:
     #    break
-    print (line, '\t', orig)
+    #print (line, '\t', orig)
 
+print("Encoding lines")
 input_text = np.zeros((len(text), maxlen), dtype='uint8')
 output_text = np.zeros((len(text), maxlen), dtype='uint8')
 for i, entry in enumerate(text):
@@ -84,6 +89,8 @@ for i, entry in enumerate(text):
             byte_line[len(line)+1] = 1
     input_text[i,:] = byte_line
     output_text[i,:] = byte_orig
+    if i % 1000000 == 0:
+        print(i)
     #print (orig_len, encoding.decode_string(byte_line), '\t', encoding.decode_string(byte_orig))
     #print()
 
