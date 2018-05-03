@@ -2,6 +2,7 @@
 import sys
 import random
 import math
+import re
 
 verbs_rules = [["has", "have", "had"],
                ["was", "were", "are", "is"],
@@ -46,16 +47,47 @@ def word_substitute(line, rules, prob):
     for group in rules:
         for word in group:
             word_len = len(word)
+            where = 0
             while True:
-                where = line.find(" " + word + " ")
-                if where < 0:
+                pos = line[where:].find(word)
+                if pos < 0:
                     break
-                where = where + 1
+                where = where + pos
+                if (where > 0 and line[where-1] != ' ') or (where+word_len < len(line) and line[where+word_len] != ' '):
+                    where += 1
+                    continue
                 if random.random() < prob:
                     subst = random.choice(group)
                     line = line[:where] + subst + line[(where+word_len):]
-                #fixme: keep iterating
-                break
+                where += word_len
+    return line
+
+def strip_plural(line, prob):
+    where = 0
+    while True:
+        pos = re.search("[a-zA-Z]s[ ,.;:$]", line[where:])
+        if pos:
+            pos = pos.start()
+        else:
+            break
+        where += pos
+        if random.random() < prob:
+            line = line[:where+1] + line[where+2:]
+        where += 2
+    return line
+
+def add_plural(line, prob):
+    where = 0
+    while True:
+        pos = re.search("[a-zA-Z][ ,.;:$]", line[where:])
+        if pos:
+            pos = pos.start()
+        else:
+            break
+        where += pos
+        if random.random() < prob:
+            line = line[:where+1] + 's' + line[where+1:]
+        where += 4
     return line
 
 def letter_deletion(line, prob):

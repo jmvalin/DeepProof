@@ -184,13 +184,13 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 # Run training
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.summary()
-#model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
-#          batch_size=batch_size,
-#          epochs=epochs,
-#          validation_split=0.2)
+model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
+          batch_size=batch_size,
+          epochs=epochs,
+          validation_split=0.2)
 # Save model
-#model.save('s2s.h5')
-model.load_weights('s2s.h5')
+model.save('s2s.h5')
+#model.load_weights('s2s.h5')
 
 # Next: inference mode (sampling).
 # Here's the drill:
@@ -299,7 +299,8 @@ def beam_decode_sequence(input_seq):
     print(in_nbest[0][0])
     return in_nbest[0][1]
 
-for seq_index in range(200):
+start = int(.9*input_text.shape[0])
+for seq_index in range(start, start+1000):
     # Take one sequence (part of the training test)
     # for trying out decoding.
     input_seq = input_data[seq_index: seq_index + 1]

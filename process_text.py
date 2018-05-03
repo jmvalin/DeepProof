@@ -62,6 +62,8 @@ for line in sys.stdin:
     line = word_substitute(line, homonyms_rules, 0.15)
     line = word_substitute(line, prepositions_rules, 0.15)
     line = word_substitute(line, misc_rules, 0.15)
+    line = strip_plural(line, 0.15)
+    line = add_plural(line, 0.005)
     line = letter_deletion(line, 0.005)
     line = letter_doubling(line, 0.005)
     line = letter_swap(line, 0.005)
@@ -72,7 +74,7 @@ for line in sys.stdin:
     text.append((line, orig, chop_begin, chop_end, orig_len))
     #if len(text) > 1000:
     #    break
-    #print (line, '\t', orig)
+    print (line, '\t', orig)
 
 print("Encoding lines")
 input_text = np.zeros((len(text), maxlen), dtype='uint8')
