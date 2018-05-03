@@ -230,6 +230,7 @@ def decode_sequence(input_seq):
     stop_condition = False
     decoded_sentence = ''
     foo=0
+    prob = 0
     while foo < input_seq.shape[1] and not stop_condition:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c = decoder_model.predict(
@@ -239,12 +240,12 @@ def decode_sequence(input_seq):
         sampled_token_index = np.argmax(output_tokens[0, -1, :])
         sampled_char = encoding.char_list[sampled_token_index]
         decoded_sentence += sampled_char
-
+        prob += math.log(output_tokens[0, -1, sampled_token_index])
         # Exit condition: either hit max length
         # or find stop character.
-        if ((foo > 1 and sampled_token_index <= 1) or
-           len(decoded_sentence) > max_decoder_seq_length):
-            stop_condition = True
+        #if ((foo > 1 and sampled_token_index <= 1) or
+        #   len(decoded_sentence) > max_decoder_seq_length):
+        #    stop_condition = True
 
         # Update the target sequence (of length 1).
         target_seq = np.zeros((1, 1, 1))
@@ -253,11 +254,12 @@ def decode_sequence(input_seq):
         # Update states
         states_value = [h, c]
         foo = foo+1
+    print(prob)
     return decoded_sentence
 
 def beam_decode_sequence(input_seq):
     # Encode the input as state vectors.
-    B = 1
+    B = 10
     encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
 
     in_nbest=[(0., '', np.array([[[0]]]), [state_h, state_c])]
@@ -276,26 +278,35 @@ def beam_decode_sequence(input_seq):
                 sampled_char = encoding.char_list[sampled_token_index]
                 # Update the target sequence (of length 1).
                 target_seq = np.array([[[sampled_token_index]]])
-                new_prob = prob + math.log(output_tokens[0, -1, arg[-1-i]])
-
-                out_nbest.append((new_prob, decoded_sentence + sampled_char, target_seq, states_value))
+                new_prob = prob + math.log(output_tokens[0, -1, sampled_token_index])
+                candidate = (new_prob, decoded_sentence + sampled_char, target_seq, states_value)
+                if len(out_nbest) < B:
+                    out_nbest.append(candidate)
+                elif new_prob > out_nbest[-1][0]:
+                    for j in range(len(out_nbest)):
+                        if new_prob > out_nbest[j][0]:
+                            out_nbest = out_nbest[:j] + [candidate] + out_nbest[j+1:]
+                            break
         
         in_nbest = out_nbest
         # Exit condition: either hit max length
         # or find stop character.
-        if ((foo > 1 and sampled_token_index <= 1) or
-           len(decoded_sentence) > max_decoder_seq_length):
-            break
+        #if ((foo > 1 and sampled_token_index <= 1) or
+        #   len(decoded_sentence) > max_decoder_seq_length):
+        #    break
 
         foo = foo+1
+    print(in_nbest[0][0])
     return decoded_sentence
 
 for seq_index in range(200):
     # Take one sequence (part of the training test)
     # for trying out decoding.
     input_seq = input_data[seq_index: seq_index + 1]
+    decoded_sentence0 = decode_sequence(input_seq)
     decoded_sentence = beam_decode_sequence(input_seq)
     print('-')
     print('Input sentence:   ', encoding.decode_string(input_text[seq_index,:]))
+    print('Decoded sentence0:', decoded_sentence0)
     print('Decoded sentence: ', decoded_sentence)
     print('Original sentence:', encoding.decode_string(output_text[seq_index,:]))
