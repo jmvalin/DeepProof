@@ -13,7 +13,7 @@ frac = .4
 
 text = []
 
-print("Computing lines")
+print("Computing lines", file=sys.stderr)
 for line in sys.stdin:
     if random.random() > frac:
         continue
@@ -69,14 +69,14 @@ for line in sys.stdin:
     line = letter_swap(line, 0.005)
     line = letter_subst(line, 0.002)
     if len(text) % 1000000 == 0:
-        print(len(text))
+        print(len(text), file=sys.stderr)
     
     text.append((line, orig, chop_begin, chop_end, orig_len))
     #if len(text) > 1000:
     #    break
     print (line, '\t', orig)
 
-print("Encoding lines")
+print("Encoding lines", file=sys.stderr)
 input_text = np.zeros((len(text), maxlen), dtype='uint8')
 output_text = np.zeros((len(text), maxlen), dtype='uint8')
 for i, entry in enumerate(text):
@@ -93,7 +93,7 @@ for i, entry in enumerate(text):
     input_text[i,:] = byte_line
     output_text[i,:] = byte_orig
     if i % 1000000 == 0:
-        print(i)
+        print(i, file=sys.stderr)
     #print (orig_len, encoding.decode_string(byte_line), '\t', encoding.decode_string(byte_orig))
     #print()
 
