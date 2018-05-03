@@ -297,7 +297,7 @@ def beam_decode_sequence(input_seq):
 
         foo = foo+1
     print(in_nbest[0][0])
-    return decoded_sentence
+    return in_nbest[0][1]
 
 for seq_index in range(200):
     # Take one sequence (part of the training test)
