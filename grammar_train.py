@@ -67,8 +67,8 @@ set_session(tf.Session(config=config))
 
 embed_dim = 64
 batch_size = 128  # Batch size for training.
-epochs = 8  # Number of epochs to train for.
-latent_dim = 128  # Latent dimensionality of the encoding space.
+epochs = 1  # Number of epochs to train for.
+latent_dim = 512  # Latent dimensionality of the encoding space.
 '''
 num_samples = 8000000  # Number of samples to train on.
 # Path to the data txt file on disk.
@@ -183,12 +183,13 @@ model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 # Run training
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.summary()
-model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_split=0.2)
+#model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
+#          batch_size=batch_size,
+#          epochs=epochs,
+#          validation_split=0.2)
 # Save model
-model.save('s2s.h5')
+#model.save('s2s.h5')
+model.load_weights('s2s.h5')
 
 # Next: inference mode (sampling).
 # Here's the drill:
@@ -221,7 +222,7 @@ def decode_sequence(input_seq):
     # Generate empty target sequence of length 1.
     target_seq = np.zeros((1, 1, 1))
     # Populate the first character of target sequence with the start character.
-    target_seq[0, 0, :] = input_seq[0, 0, 0]
+    target_seq[0, 0, :] = 0
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
@@ -253,12 +254,47 @@ def decode_sequence(input_seq):
         foo = foo+1
     return decoded_sentence
 
+def beam_decode_sequence(input_seq):
+    # Encode the input as state vectors.
+    B = 3
+    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
+
+    in_nbest=[(0., '', np.array([[[0]]]), [state_h, state_c])]
+    foo=0
+    while foo < input_seq.shape[1]:
+        out_nbest = []
+        for prob, decoded_sentence, target_seq, states_value in in_nbest:
+            output_tokens, h, c = decoder_model.predict(
+                [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
+            arg = np.argsort(output_tokens[0, -1, :])
+            # Sample a token
+            sampled_token_index = arg[-1]
+            sampled_char = encoding.char_list[sampled_token_index]
+            decoded_sentence += sampled_char
+            # Update the target sequence (of length 1).
+            target_seq = np.array([[[sampled_token_index]]])
+
+            # Update states
+            states_value = [h, c]
+
+            out_nbest.append((0., decoded_sentence, target_seq, states_value))
+        
+        in_nbest = out_nbest
+        # Exit condition: either hit max length
+        # or find stop character.
+        if ((foo > 1 and sampled_token_index <= 1) or
+           len(decoded_sentence) > max_decoder_seq_length):
+            break
+
+        foo = foo+1
+    return decoded_sentence
 
 for seq_index in range(200):
     # Take one sequence (part of the training test)
     # for trying out decoding.
     input_seq = input_data[seq_index: seq_index + 1]
-    decoded_sentence = decode_sequence(input_seq)
+    decoded_sentence = beam_decode_sequence(input_seq)
     print('-')
-    print('Input sentence:  ', encoding.decode_string(input_text[seq_index,:]))
-    print('Decoded sentence:', decoded_sentence)
+    print('Input sentence:   ', encoding.decode_string(input_text[seq_index,:]))
+    print('Decoded sentence: ', decoded_sentence)
+    print('Original sentence:', encoding.decode_string(output_text[seq_index,:]))

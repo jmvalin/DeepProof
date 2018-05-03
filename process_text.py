@@ -29,6 +29,7 @@ for line in sys.stdin:
     if re.match("\([0-9][0-9][0-9][0-9]\)", line):
         continue
     line = " ".join(line.split())
+    line = line.replace("`", "'")
     orig_len = strlen = len(line)
     #print(line)
     chop_begin = chop_end = False
