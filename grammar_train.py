@@ -51,6 +51,7 @@ http://www.manythings.org/anki/
 '''
 from __future__ import print_function
 
+import math
 from keras.models import Model
 from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
 from keras import backend as K
@@ -256,7 +257,7 @@ def decode_sequence(input_seq):
 
 def beam_decode_sequence(input_seq):
     # Encode the input as state vectors.
-    B = 3
+    B = 1
     encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
 
     in_nbest=[(0., '', np.array([[[0]]]), [state_h, state_c])]
@@ -268,16 +269,16 @@ def beam_decode_sequence(input_seq):
                 [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
             arg = np.argsort(output_tokens[0, -1, :])
             # Sample a token
-            sampled_token_index = arg[-1]
-            sampled_char = encoding.char_list[sampled_token_index]
-            decoded_sentence += sampled_char
-            # Update the target sequence (of length 1).
-            target_seq = np.array([[[sampled_token_index]]])
-
             # Update states
             states_value = [h, c]
+            for i in range(B):
+                sampled_token_index = arg[-1-i]
+                sampled_char = encoding.char_list[sampled_token_index]
+                # Update the target sequence (of length 1).
+                target_seq = np.array([[[sampled_token_index]]])
+                new_prob = prob + math.log(output_tokens[0, -1, arg[-1-i]])
 
-            out_nbest.append((0., decoded_sentence, target_seq, states_value))
+                out_nbest.append((new_prob, decoded_sentence + sampled_char, target_seq, states_value))
         
         in_nbest = out_nbest
         # Exit condition: either hit max length
