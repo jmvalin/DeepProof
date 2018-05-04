@@ -1,53 +1,5 @@
 #!/usr/bin/python3
-'''Sequence to sequence example in Keras (character-level).
-
-This script demonstrates how to implement a basic character-level
-sequence-to-sequence model. We apply it to translating
-short English sentences into short French sentences,
-character-by-character. Note that it is fairly unusual to
-do character-level machine translation, as word-level
-models are more common in this domain.
-
-# Summary of the algorithm
-
-- We start with input sequences from a domain (e.g. English sentences)
-    and correspding target sequences from another domain
-    (e.g. French sentences).
-- An encoder LSTM turns input sequences to 2 state vectors
-    (we keep the last LSTM state and discard the outputs).
-- A decoder LSTM is trained to turn the target sequences into
-    the same sequence but offset by one timestep in the future,
-    a training process called "teacher forcing" in this context.
-    Is uses as initial state the state vectors from the encoder.
-    Effectively, the decoder learns to generate `targets[t+1...]`
-    given `targets[...t]`, conditioned on the input sequence.
-- In inference mode, when we want to decode unknown input sequences, we:
-    - Encode the input sequence into state vectors
-    - Start with a target sequence of size 1
-        (just the start-of-sequence character)
-    - Feed the state vectors and 1-char target sequence
-        to the decoder to produce predictions for the next character
-    - Sample the next character using these predictions
-        (we simply use argmax).
-    - Append the sampled character to the target sequence
-    - Repeat until we generate the end-of-sequence character or we
-        hit the character limit.
-
-# Data download
-
-English to French sentence pairs.
-http://www.manythings.org/anki/fra-eng.zip
-
-Lots of neat sentence pairs datasets can be found at:
-http://www.manythings.org/anki/
-
-# References
-
-- Sequence to Sequence Learning with Neural Networks
-    https://arxiv.org/abs/1409.3215
-- Learning Phrase Representations using
-    RNN Encoder-Decoder for Statistical Machine Translation
-    https://arxiv.org/abs/1406.1078
+'''Sequence to sequence grammar check.
 '''
 from __future__ import print_function
 
@@ -70,68 +22,7 @@ embed_dim = 64
 batch_size = 128  # Batch size for training.
 epochs = 1  # Number of epochs to train for.
 latent_dim = 512  # Latent dimensionality of the encoding space.
-'''
-num_samples = 8000000  # Number of samples to train on.
-# Path to the data txt file on disk.
-data_path = 'mistakes2.txt'
 
-# Vectorize the data.
-input_texts = []
-target_texts = []
-input_characters = set()
-target_characters = set()
-lines = open(data_path).read().split('\n')
-for line in lines[: min(num_samples, len(lines) - 1)]:
-    input_text, target_text = line.split('\t')
-    # We use "tab" as the "start sequence" character
-    # for the targets, and "\n" as "end sequence" character.
-    input_text = input_text + '\n'
-    target_text = target_text + '\n'
-    input_texts.append(input_text)
-    target_texts.append(target_text)
-    for char in input_text:
-        if char not in input_characters:
-            input_characters.add(char)
-    for char in target_text:
-        if char not in target_characters:
-            target_characters.add(char)
-
-input_characters = sorted(list(input_characters))
-target_characters = sorted(list(target_characters))
-num_encoder_tokens = len(input_characters)
-max_encoder_seq_length = max([len(txt) for txt in input_texts])
-max_decoder_seq_length = max([len(txt) for txt in target_texts])
-
-print('Number of samples:', len(input_texts))
-print('Number of unique input tokens:', num_encoder_tokens)
-print('Max sequence length for inputs:', max_encoder_seq_length)
-print('Max sequence length for outputs:', max_decoder_seq_length)
-
-max_decoder_seq_length = max_encoder_seq_length = max(max_decoder_seq_length, max_encoder_seq_length)
-
-target_token_index = dict(
-    [(char, i) for i, char in enumerate(input_characters)])
-charid = np.zeros(128, dtype='uint8')
-for i, char in enumerate(input_characters):
-    charid[ord(char)] = i
-
-input_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, 2),
-    dtype='int8')
-decoder_target_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, 1),
-    dtype='int8')
-
-for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
-    tmp = charid[np.array(input_text, 'c').view(dtype=np.uint8)]
-    input_data[i, 0:len(tmp), 0] = tmp
-    
-    tmp = charid[np.array(target_text, 'c').view(dtype=np.uint8)]
-    decoder_target_data[i, 0:len(tmp), 0] = tmp
-    
-    input_data[i, 0, 1] = input_data[i, 0, 0]
-    input_data[i, 1:len(tmp), 1] = decoder_target_data[i, 0:len(tmp)-1, 0]
-'''    
 with h5py.File(sys.argv[1], 'r') as hf:
     input_text = hf['input'][:]
     output_text = hf['output'][:]
