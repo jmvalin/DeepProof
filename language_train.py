@@ -18,7 +18,7 @@ config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.29
 set_session(tf.Session(config=config))
 
-embed_dim = 64
+embed_dim = 16
 batch_size = 128  # Batch size for training.
 epochs = 1  # Number of epochs to train for.
 latent_dim = 128  # Latent dimensionality of the encoding space.
@@ -38,17 +38,20 @@ print("Number of chars: ", num_encoder_tokens)
 # Define an input sequence and process it.
 reshape1 = Reshape((-1, embed_dim))
 embed = Embedding(num_encoder_tokens, embed_dim)
+conv = Conv1D(128, 5, padding='causal', activation='tanh')
+conv2 = Conv1D(128, 1, padding='causal', activation='tanh')
 
 # Set up the decoder, using `encoder_states` as initial state.
 decoder_inputs = Input(shape=(None, 1))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
-decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
+decoder_lstm = CuDNNLSTM(2*latent_dim, return_sequences=True)
+decoder_lstm2 = CuDNNLSTM(latent_dim, return_sequences=True)
 
-dec_lstm_input = reshape1(embed(decoder_inputs))
+dec_lstm_input = conv2(conv(reshape1(embed(decoder_inputs))))
 
-decoder_outputs, _, _ = decoder_lstm(dec_lstm_input)
+decoder_outputs = decoder_lstm2(decoder_lstm(dec_lstm_input))
 decoder_dense = Dense(num_encoder_tokens, activation='softmax')
 decoder_outputs = decoder_dense(decoder_outputs)
 
