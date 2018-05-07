@@ -7,7 +7,10 @@ import re
 verbs_rules = [["has", "have", "had"],
                ["was", "were", "are", "is"],
                ["go", "gone", "went", "goes"],
-               ["be", "been"]
+               ["be", "been"],
+               ["know", "knew"],
+               ["do", "did", "does"],
+               ["understand", "understood"]
               ]
 
 homonyms_rules = [["there", "their", "they're"],
@@ -23,8 +26,10 @@ prepositions_rules = [["to", "at", "in"],
                      ]
 
 misc_rules = [["the", "a"],
+              ["an", "a"],
               ["you", "your"],
               ["I", "me"],
+              ["he", "him"],
               ["this", "that"],
               ["excepted", "accepted"],
               ["affect", "effect"],
@@ -34,7 +39,9 @@ misc_rules = [["the", "a"],
               ["who", "that"],
               ["who", "whom", "whose", "who's"],
               ["in to", "into"],
-              ["lose", "loose"]
+              ["lose", "loose"],
+              ["an", "and"],
+              ["are", "our"]
              ]
 
 #these are adjacent on a querty keyboard
