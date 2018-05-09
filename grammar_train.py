@@ -43,12 +43,12 @@ print("Number of chars: ", num_encoder_tokens)
 encoder_inputs = Input(shape=(None, 1))
 reshape1 = Reshape((-1, embed_dim))
 reshape2 = Reshape((-1, embed_dim))
-conv = Conv1D(latent_dim, 5, padding='same', activation='tanh')
+conv = Conv1D(latent_dim//2, 5, padding='same', activation='tanh')
 embed = Embedding(num_encoder_tokens, embed_dim)
 encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
 encoder_outputs, state_h, state_c = encoder(conv(reshape1(embed(encoder_inputs))))
 rev = Lambda(lambda x: K.reverse(x, 1))
-conv2 = Conv1D(latent_dim, 5, padding='same', activation='tanh')
+conv2 = Conv1D(latent_dim//2, 5, dilation_rate=2, padding='same', activation='tanh')
 
 encoder_outputs = conv2(rev(encoder_outputs))
 encoder_states = [state_h, state_c]
@@ -97,7 +97,7 @@ encoder_model = Model(encoder_inputs, [encoder_outputs, state_h, state_c])
 decoder_state_input_h = Input(shape=(latent_dim,))
 decoder_state_input_c = Input(shape=(latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
-decoder_enc_inputs = Input(shape=(None, latent_dim))
+decoder_enc_inputs = Input(shape=(None, latent_dim//2))
 decoder_outputs, state_h, state_c = decoder_lstm(
     Concatenate()([reshape1(embed(decoder_inputs)), decoder_enc_inputs]), initial_state=decoder_states_inputs)
 decoder_states = [state_h, state_c]
@@ -230,6 +230,7 @@ def beam_decode_sequence(input_seq):
 
         foo = foo+1
     print(in_nbest[0][0])
+    #print("total = ", sum([math.exp(i[0]) for i in in_nbest]))
     return in_nbest[0][1]
 
 start = int(.9*input_text.shape[0])

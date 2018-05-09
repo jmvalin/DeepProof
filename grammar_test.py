@@ -28,12 +28,12 @@ num_encoder_tokens = len(encoding.char_list)
 encoder_inputs = Input(shape=(None, 1))
 reshape1 = Reshape((-1, embed_dim))
 reshape2 = Reshape((-1, embed_dim))
-conv = Conv1D(latent_dim, 5, padding='same', activation='tanh')
+conv = Conv1D(latent_dim//2, 5, padding='same', activation='tanh')
 embed = Embedding(num_encoder_tokens, embed_dim)
-encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
+encoder = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True, go_backwards=True)
 encoder_outputs, state_h, state_c = encoder(conv(reshape1(embed(encoder_inputs))))
 rev = Lambda(lambda x: K.reverse(x, 1))
-conv2 = Conv1D(latent_dim, 5, padding='same', activation='tanh')
+conv2 = Conv1D(latent_dim//2, 5, dilation_rate=2, padding='same', activation='tanh')
 
 encoder_outputs = conv2(rev(encoder_outputs))
 encoder_states = [state_h, state_c]
@@ -43,7 +43,7 @@ decoder_inputs = Input(shape=(None, 1))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
-decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
+decoder_lstm = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
 
 dec_lstm_input = reshape1(embed(decoder_inputs))
 dec_lstm_input = Concatenate()([dec_lstm_input, encoder_outputs])
@@ -66,7 +66,7 @@ model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=
 #          validation_split=0.2)
 # Save model
 #model.save('s2s.h5')
-model.load_weights('s2s.h5')
+model.load_weights('s2s_data5d.h5')
 
 # Next: inference mode (sampling).
 # Here's the drill:
@@ -82,7 +82,7 @@ encoder_model = Model(encoder_inputs, [encoder_outputs, state_h, state_c])
 decoder_state_input_h = Input(shape=(latent_dim,))
 decoder_state_input_c = Input(shape=(latent_dim,))
 decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
-decoder_enc_inputs = Input(shape=(None, latent_dim))
+decoder_enc_inputs = Input(shape=(None, latent_dim//2))
 decoder_outputs, state_h, state_c = decoder_lstm(
     Concatenate()([reshape1(embed(decoder_inputs)), decoder_enc_inputs]), initial_state=decoder_states_inputs)
 decoder_states = [state_h, state_c]
