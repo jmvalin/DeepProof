@@ -48,10 +48,9 @@ def create(use_gpu):
     decoder_dense = Dense(num_encoder_tokens, activation='softmax')
     decoder_outputs = decoder_dense(decoder_outputs)
 
-    # Define the model that will turn
-    # `encoder_input_data` & `decoder_input_data` into `decoder_target_data`
     model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
+    #The following is needed for inference (one at a time decoding) only
     encoder_model = Model(encoder_inputs, [encoder_outputs, state_h, state_c])
 
     decoder_state_input_h = Input(shape=(latent_dim,))
@@ -80,11 +79,10 @@ def decode_sequence(models, input_seq):
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
-    stop_condition = False
     decoded_sentence = ''
     foo=0
     prob = 0
-    while foo < input_seq.shape[1] and not stop_condition:
+    while foo < input_seq.shape[1]:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c = decoder_model.predict(
             [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
@@ -94,11 +92,6 @@ def decode_sequence(models, input_seq):
         sampled_char = encoding.char_list[sampled_token_index]
         decoded_sentence += sampled_char
         prob += math.log(output_tokens[0, -1, sampled_token_index])
-        # Exit condition: either hit max length
-        # or find stop character.
-        #if ((foo > 1 and sampled_token_index <= 1) or
-        #   len(decoded_sentence) > max_decoder_seq_length):
-        #    stop_condition = True
 
         # Update the target sequence (of length 1).
         target_seq = np.zeros((1, 1, 1))
@@ -143,12 +136,6 @@ def beam_decode_sequence(models, input_seq):
                             break
         
         in_nbest = out_nbest
-        # Exit condition: either hit max length
-        # or find stop character.
-        #if ((foo > 1 and sampled_token_index <= 1) or
-        #   len(decoded_sentence) > max_decoder_seq_length):
-        #    break
-
         foo = foo+1
     print(in_nbest[0][0])
     return in_nbest[0][1]
@@ -168,11 +155,10 @@ def decode_ground_truth(models, input_seq, output_seq):
 
     # Sampling loop for a batch of sequences
     # (to simplify, here we assume a batch of size 1).
-    stop_condition = False
     decoded_sentence = ''
     foo=0
     prob = 0
-    while foo < input_seq.shape[1] and not stop_condition:
+    while foo < input_seq.shape[1]:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c = decoder_model.predict(
             [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
@@ -182,11 +168,6 @@ def decode_ground_truth(models, input_seq, output_seq):
         sampled_char = encoding.char_list[sampled_token_index]
         decoded_sentence += sampled_char
         prob += math.log(output_tokens[0, -1, sampled_token_index])
-        # Exit condition: either hit max length
-        # or find stop character.
-        #if ((foo > 1 and sampled_token_index <= 1) or
-        #   len(decoded_sentence) > max_decoder_seq_length):
-        #    stop_condition = True
 
         # Update the target sequence (of length 1).
         target_seq = np.zeros((1, 1, 1))
