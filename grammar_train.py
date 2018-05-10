@@ -23,7 +23,7 @@ set_session(tf.Session(config=config))
 batch_size = 128  # Batch size for training.
 epochs = 1  # Number of epochs to train for.
 
-encoder_model, decoder_model, model = deepproof_model.create(True)
+encoder_model, decoder_model, model = deepproof_model.create(False)
 
 with h5py.File(sys.argv[1], 'r') as hf:
     input_text = hf['input'][:]
