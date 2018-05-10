@@ -23,7 +23,7 @@ def create(use_gpu):
     if use_gpu:
         encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
     else:
-        encoder = RRLSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True, go_backwards=True)
+        encoder = RRLSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True, go_backwards=True, implementation=2)
     encoder_outputs, state_h, state_c = encoder(conv(reshape1(embed(encoder_inputs))))
     rev = Lambda(lambda x: K.reverse(x, 1))
     conv2 = Conv1D(latent_dim//2, 5, dilation_rate=2, padding='same', activation='tanh')
@@ -40,7 +40,7 @@ def create(use_gpu):
         decoder_lstm1 = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
         decoder_lstm2 = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
     else:
-        decoder_lstm = RRLSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
+        decoder_lstm = RRLSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True, implementation=2)
 
     dec_lstm_input = reshape1(embed(decoder_inputs))
     dec_lstm_input = Concatenate()([dec_lstm_input, encoder_outputs])

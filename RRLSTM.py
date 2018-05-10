@@ -98,7 +98,7 @@ class RRLSTMCell(Layer):
                  **kwargs):
         super(RRLSTMCell, self).__init__(**kwargs)
         self.units = units
-        self.rank = units//16
+        self.rank = units//8
         self.activation = activations.get(activation)
         self.recurrent_activation = activations.get(recurrent_activation)
         self.use_bias = use_bias
@@ -125,13 +125,13 @@ class RRLSTMCell(Layer):
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
-        self.kernel1 = self.add_weight(shape=(input_dim, self.rank * 4),
+        self.kernel1 = self.add_weight(shape=(input_dim, self.rank),
                                       name='kernel1',
                                       initializer=self.kernel_initializer,
                                       regularizer=self.kernel_regularizer,
                                       constraint=self.kernel_constraint)
         self.recurrent_kernel1 = self.add_weight(
-            shape=(self.units, self.rank * 4),
+            shape=(self.units, self.rank),
             name='recurrent_kernel1',
             initializer=self.recurrent_initializer,
             regularizer=self.recurrent_regularizer,
@@ -165,26 +165,25 @@ class RRLSTMCell(Layer):
                                         constraint=self.bias_constraint)
         else:
             self.bias = None
+        #self.kernel_i1 = self.kernel1[:, :self.rank]
+        #self.kernel_f1 = self.kernel1[:, self.rank: self.rank * 2]
+        #self.kernel_c1 = self.kernel1[:, self.rank * 2: self.rank * 3]
+        #self.kernel_o1 = self.kernel1[:, self.rank * 3:]
 
-        self.kernel_i1 = self.kernel1[:, :self.rank]
-        self.kernel_f1 = self.kernel1[:, self.rank: self.rank * 2]
-        self.kernel_c1 = self.kernel1[:, self.rank * 2: self.rank * 3]
-        self.kernel_o1 = self.kernel1[:, self.rank * 3:]
+        #self.recurrent_kernel_i1 = self.recurrent_kernel1[:, :self.rank]
+        #self.recurrent_kernel_f1 = self.recurrent_kernel1[:, self.rank: self.rank * 2]
+        #self.recurrent_kernel_c1 = self.recurrent_kernel1[:, self.rank * 2: self.rank * 3]
+        #self.recurrent_kernel_o1 = self.recurrent_kernel1[:, self.rank * 3:]
 
-        self.recurrent_kernel_i1 = self.recurrent_kernel1[:, :self.rank]
-        self.recurrent_kernel_f1 = self.recurrent_kernel1[:, self.rank: self.rank * 2]
-        self.recurrent_kernel_c1 = self.recurrent_kernel1[:, self.rank * 2: self.rank * 3]
-        self.recurrent_kernel_o1 = self.recurrent_kernel1[:, self.rank * 3:]
+        #self.kernel_i2 = self.kernel2[:, :self.units]
+        #self.kernel_f2 = self.kernel2[:, self.units: self.units * 2]
+        #self.kernel_c2 = self.kernel2[:, self.units * 2: self.units * 3]
+        #self.kernel_o2 = self.kernel2[:, self.units * 3:]
 
-        self.kernel_i2 = self.kernel2[:, :self.units]
-        self.kernel_f2 = self.kernel2[:, self.units: self.units * 2]
-        self.kernel_c2 = self.kernel2[:, self.units * 2: self.units * 3]
-        self.kernel_o2 = self.kernel2[:, self.units * 3:]
-
-        self.recurrent_kernel_i2 = self.recurrent_kernel2[:, :self.units]
-        self.recurrent_kernel_f2 = self.recurrent_kernel2[:, self.units: self.units * 2]
-        self.recurrent_kernel_c2 = self.recurrent_kernel2[:, self.units * 2: self.units * 3]
-        self.recurrent_kernel_o2 = self.recurrent_kernel2[:, self.units * 3:]
+        #self.recurrent_kernel_i2 = self.recurrent_kernel2[:, :self.units]
+        #self.recurrent_kernel_f2 = self.recurrent_kernel2[:, self.units: self.units * 2]
+        #self.recurrent_kernel_c2 = self.recurrent_kernel2[:, self.units * 2: self.units * 3]
+        #self.recurrent_kernel_o2 = self.recurrent_kernel2[:, self.units * 3:]
 
         if self.use_bias:
             self.bias_i = self.bias[:self.units]
@@ -263,10 +262,10 @@ class RRLSTMCell(Layer):
         else:
             if 0. < self.dropout < 1.:
                 inputs *= dp_mask[0]
-            z = K.dot(inputs, self.kernel)
+            z = K.dot(K.dot(inputs, self.kernel1), self.kernel2)
             if 0. < self.recurrent_dropout < 1.:
                 h_tm1 *= rec_dp_mask[0]
-            z += K.dot(h_tm1, self.recurrent_kernel)
+            z += K.dot(K.dot(h_tm1, self.recurrent_kernel1), self.recurrent_kernel2)
             if self.use_bias:
                 z = K.bias_add(z, self.bias)
 
