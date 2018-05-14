@@ -19,7 +19,7 @@ config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.29
 set_session(tf.Session(config=config))
 
-encoder_model, decoder_model, model = deepproof_model.create(True)
+encoder_model, decoder_model, model = deepproof_model.create(False)
 
 model.load_weights('s2s_data5j2.h5')
 

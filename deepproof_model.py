@@ -39,6 +39,7 @@ def create(use_gpu):
         language_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
         decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
     else:
+        language_lstm = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
         decoder_lstm = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
 
     dec_lstm_input = reshape1(embed(decoder_inputs))
