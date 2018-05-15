@@ -11,6 +11,7 @@ import numpy as np
 import h5py
 import sys
 import encoding
+from milstm import MILSTM
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -18,13 +19,14 @@ config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.29
 set_session(tf.Session(config=config))
 
-embed_dim = 16
+embed_dim = 64
 batch_size = 128  # Batch size for training.
 epochs = 1  # Number of epochs to train for.
 latent_dim = 128  # Latent dimensionality of the encoding space.
 
 with h5py.File(sys.argv[1], 'r') as hf:
     output_text = hf['output'][:]
+#output_text = output_text[1:400000,:]
 decoder_target_data = np.reshape(output_text, (output_text.shape[0], output_text.shape[1], 1))
 decoder_input_data = np.zeros((output_text.shape[0], output_text.shape[1], 1), dtype='uint8')
 decoder_input_data[:,1:,:] = decoder_target_data[:,:-1,:]
@@ -46,10 +48,14 @@ decoder_inputs = Input(shape=(None, 1))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
-decoder_lstm = CuDNNLSTM(2*latent_dim, return_sequences=True)
-decoder_lstm2 = CuDNNLSTM(latent_dim, return_sequences=True)
 
-dec_lstm_input = conv2(conv(reshape1(embed(decoder_inputs))))
+#decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True)
+decoder_lstm = MILSTM(4*latent_dim, name="lang_milstm", recurrent_activation="sigmoid", implementation=2, return_sequences=True)
+
+decoder_lstm2 = CuDNNLSTM(latent_dim, return_sequences=True)
+#decoder_lstm2 = MILSTM(latent_dim, recurrent_activation="sigmoid", implementation=2, return_sequences=True)
+
+dec_lstm_input = reshape1(embed(decoder_inputs))
 
 decoder_outputs = decoder_lstm2(decoder_lstm(dec_lstm_input))
 decoder_dense = Dense(num_encoder_tokens, activation='softmax')
@@ -62,10 +68,11 @@ model = Model(decoder_inputs, decoder_outputs)
 # Run training
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.summary()
+#model.load_weights('language1.h5')
 model.fit(decoder_input_data, decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('language.h5')
+model.save('language2.h5')
 #model.load_weights('s2s.h5')
