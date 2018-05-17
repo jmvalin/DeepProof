@@ -19,6 +19,9 @@ from keras import initializers
 from keras import constraints
 from keras.initializers import Ones
 
+def identity(shape, dtype=None):
+    return np.identity(shape[0], dtype)
+
 class MILSTMCell(Layer):
     """Cell class for the MILSTM layer.
 
@@ -170,6 +173,11 @@ class MILSTMCell(Layer):
                                      initializer=Ones(),
                                      regularizer=self.bias_regularizer,
                                      constraint=self.bias_constraint)
+        self.extra = self.add_weight(shape=(self.units,self.units),
+                                     name='alpha',
+                                     initializer=identity,
+                                     regularizer=self.bias_regularizer,
+                                     constraint=self.bias_constraint)
 
         self.kernel_i = self.kernel[:, :self.units]
         self.kernel_f = self.kernel[:, self.units: self.units * 2]
@@ -273,7 +281,7 @@ class MILSTMCell(Layer):
 
             i = self.recurrent_activation(z0)
             f = self.recurrent_activation(z1)
-            c = f * c_tm1 + i * self.activation(z2)
+            c = f * c_tm1 + i * self.activation(K.dot(z2, self.extra))
             o = self.recurrent_activation(z3)
 
         h = o * self.activation(c)
