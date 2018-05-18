@@ -6,13 +6,23 @@ import numpy as np
 import h5py
 import sys
 import encoding
+from milstm import MILSTM
 
 embed_dim = 64
 latent_dim = 512  # Latent dimensionality of the encoding space.
 num_encoder_tokens = len(encoding.char_list)
 
+lang_embed_dim = 64
+lang_units = 512
 
 def create(use_gpu):
+    lang_input = Input(shape=(None, 1), name="lang_input")
+    lang_embed = Embedding(num_encoder_tokens, lang_embed_dim, name="lang_embed")
+    lang_reshape = Reshape((-1, lang_embed_dim), name="lang_reshape")
+    lang_lstm = MILSTM(lang_units, name="lang_milstm", recurrent_activation="sigmoid", implementation=2, return_sequences=True, return_state=True)
+    lang_output = lang_lstm(lang_reshape(lang_embed(lang_input)))
+    lang_model = Model(lang_input, lang_output, name="lang_model")
+
     # Define an input sequence and process it.
     encoder_inputs = Input(shape=(None, 1))
     reshape1 = Reshape((-1, embed_dim))
@@ -44,7 +54,8 @@ def create(use_gpu):
 
     dec_lstm_input = reshape1(embed(decoder_inputs))
 
-    language_outputs, _, _ = language_lstm(dec_lstm_input)
+    #language_outputs, _, _ = language_lstm(dec_lstm_input)
+    language_outputs, _, _ = lang_model(decoder_inputs)
 
     dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, encoder_outputs])
 
@@ -65,7 +76,8 @@ def create(use_gpu):
     decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c, lang_state_input_h, lang_state_input_c]
     decoder_enc_inputs = Input(shape=(None, latent_dim//2))
     tmp = reshape1(embed(decoder_inputs))
-    lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
+    #lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
+    lang_outputs, lstate_h, lstate_c = lang_lstm(lang_reshape(lang_embed(decoder_inputs)), initial_state=decoder_states_inputs[2:])
 
     decoder_outputs, state_h, state_c = decoder_lstm(
         Concatenate()([tmp, lang_outputs, decoder_enc_inputs]), initial_state=decoder_states_inputs[0:2])
@@ -74,7 +86,7 @@ def create(use_gpu):
     decoder_model = Model(
         [decoder_inputs, decoder_enc_inputs] + decoder_states_inputs,
         [decoder_outputs] + decoder_states)
-    return (encoder_model, decoder_model, model)
+    return (encoder_model, decoder_model, model, lang_model)
 
 def decode_sequence(models, input_seq):
     [encoder_model, decoder_model] = models

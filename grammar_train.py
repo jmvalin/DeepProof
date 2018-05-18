@@ -6,6 +6,7 @@ from __future__ import print_function
 import math
 from keras.models import Model
 from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
+from keras.optimizers import Adam
 from keras import backend as K
 import numpy as np
 import h5py
@@ -23,7 +24,9 @@ set_session(tf.Session(config=config))
 batch_size = 128  # Batch size for training.
 epochs = 1  # Number of epochs to train for.
 
-encoder_model, decoder_model, model = deepproof_model.create(True)
+encoder_model, decoder_model, model, lang_model = deepproof_model.create(True)
+
+lang_model.trainable = False
 
 with h5py.File(sys.argv[1], 'r') as hf:
     input_text = hf['input'][:]
@@ -42,15 +45,16 @@ print("Sentence length: ", input_text.shape[1])
 print("Number of chars: ", num_encoder_tokens)
 
 # Run training
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
-model.load_weights('s2s.h5')
+model.compile(optimizer=Adam(.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
+model.load_weights('proof2.h5')
+#lang_model.load_weights('lang3.h5')
 model.summary()
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('s2s.h5')
+model.save('proof2b.h5')
 
 
 

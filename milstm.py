@@ -282,6 +282,7 @@ class MILSTMCell(Layer):
             i = self.recurrent_activation(z0)
             f = self.recurrent_activation(z1)
             c = f * c_tm1 + i * self.activation(K.dot(z2, self.extra))
+            #c = f * c_tm1 + i * self.activation(z2)
             o = self.recurrent_activation(z3)
 
         h = o * self.activation(c)
