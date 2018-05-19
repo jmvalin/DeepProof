@@ -51,7 +51,7 @@ decoder_inputs = Input(shape=(None, 1), name="lang_input")
 # return states in the training model, but we will use them in inference.
 
 #decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True)
-decoder_lstm = MILSTM(4*latent_dim, name="lang_milstm", recurrent_activation="sigmoid", implementation=2, return_sequences=True)
+decoder_lstm = MILSTM(4*latent_dim, name="lang_milstm", recurrent_activation="sigmoid", implementation=3, return_sequences=True)
 
 decoder_lstm2 = CuDNNLSTM(latent_dim, return_sequences=True)
 #decoder_lstm2 = MILSTM(latent_dim, recurrent_activation="sigmoid", implementation=2, return_sequences=True)
@@ -69,9 +69,9 @@ decoder_outputs = decoder_dense(decoder_outputs)
 # `encoder_input_data` & `decoder_input_data` into `decoder_target_data`
 model = Model(decoder_inputs, decoder_outputs)
 
-model.load_weights('language3d.h5')
-model1.save('lang3.h5')
-model1.save_weights('lang3_weights.h5')
+#model.load_weights('language3d.h5')
+#model1.save('lang3.h5')
+#model1.save_weights('lang3_weights.h5')
 
 #sys.exit(0)
 
@@ -84,5 +84,5 @@ model.fit(decoder_input_data, decoder_target_data,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-#model.save('language2c.h5')
+model.save('language4.h5')
 #model.load_weights('s2s.h5')
