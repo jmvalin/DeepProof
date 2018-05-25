@@ -6,6 +6,7 @@ import numpy as np
 from mistakes import *
 import encoding
 import h5py
+from irregular import irregular_verbs
 
 maxlen = 300
 minlen = 80
@@ -58,7 +59,7 @@ for line in sys.stdin:
     orig = line;
     #print (orig)
     #continue
-    line = word_substitute(line, verbs_rules, 0.2)
+    line = word_substitute(line, irregular_rules, 0.2)
     line = word_substitute(line, homonyms_rules, 0.2)
     line = word_substitute(line, prepositions_rules, 0.2)
     line = word_substitute(line, misc_rules, 0.2)
@@ -94,7 +95,7 @@ for i, entry in enumerate(text):
     output_text[i,:] = byte_orig
     if i % 1000000 == 0:
         print(i, file=sys.stderr)
-    #print (orig_len, encoding.decode_string(byte_line), '\t', encoding.decode_string(byte_orig))
+    print (orig_len, encoding.decode_string(byte_line), '\t', encoding.decode_string(byte_orig))
     #print()
 
 h5f = h5py.File(sys.argv[1], 'w');

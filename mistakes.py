@@ -3,7 +3,8 @@ import sys
 import random
 import math
 import re
-
+from irregular import irregular_verbs
+'''
 verbs_rules = [["has", "have", "had"],
                ["was", "were", "are", "is"],
                ["go", "gone", "went", "goes"],
@@ -12,23 +13,45 @@ verbs_rules = [["has", "have", "had"],
                ["do", "did", "does"],
                ["understand", "understood"]
               ]
-
+'''
 homonyms_rules = [["there", "their", "they're"],
                   ["to", "too", "two"],
                   ["break", "brake"],
                   ["its", "it's"],
-                  ["then", "than"]
+                  ["then", "than"],
+                  ["which", "witch"],
+                  ["here", "hear"],
+                  ["weather", "whether"],
+                  ["bear", "bare"],
+                  ["fore", "for", "four"],
+                  ["meet", "meat"],
+                  ["wear", "where", "ware"],
+                  ["week", "weak"],
+                  ["wait", "weight"],
+                  ["waste", "waist"],
+                  ["sweat", "suite", "sweat"],
+                  ["steel", "steal"],
+                  ["steak", "stake"],
+                  ["sun", "son"],
+                  ["no", "know"],
+                  ["mail", "male"],
+                  ["light", "lite"],
+                  ["hole", "whole"],
+                  ["maid", "made"],
+                  ["fair", "fare"]
                  ]
 
-prepositions_rules = [["to", "at", "in"],
+prepositions_rules = [["to", "at", "in", "for"],
                       ["out", "off"],
-                      ["on", "over"]
+                      ["on", "over"],
+                      ["since", "for"],
+                      ["from", "than"],
+                      ["on", "at"]
                      ]
 
-misc_rules = [["the", "a"],
-              ["an", "a"],
-              ["you", "your"],
-              ["I", "me"],
+misc_rules = [["the", "a", "an"],
+              ["you", "your", "you're"],
+              ["I", "me", "my"],
               ["he", "him"],
               ["this", "that"],
               ["excepted", "accepted"],
@@ -41,14 +64,32 @@ misc_rules = [["the", "a"],
               ["in to", "into"],
               ["lose", "loose"],
               ["an", "and"],
-              ["are", "our"]
+              ["are", "our"],
+              ["not", "now"],
+              ["I", "i"]
              ]
 
 #these are adjacent on a querty keyboard
 #adjacent_list = "poiuytrewqasdfghjkl.,mnbvcxz"
 
+irregular_rules = []
+for verb in irregular_verbs:
+    present = verb[0]
+    if present[-1] == 'e':
+        badpast = present + 'd'
+    else:
+        badpast = present + 'ed'
+    if verb[-1] == verb[-2]:
+        verb = verb[:-1]
+    if verb[-1] == verb[-2]:
+        verb = verb[:-1]
+    verb = verb + [badpast]
+    if verb[-1] == verb[-2]:
+        verb = verb[:-1]
+    irregular_rules = irregular_rules + [verb]
+    #print(verb);
 
-
+#print(irregular_rules)
 
 def word_substitute(line, rules, prob):
     for group in rules:
