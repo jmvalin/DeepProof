@@ -31,6 +31,10 @@ for line in sys.stdin:
         continue
     line = " ".join(line.split())
     line = line.replace("`", "'")
+    
+    #modify the "correct" sentence to randomly add/remove contractions
+    line = word_substitute(line, acceptable_contractions, 0.2)
+    
     orig_len = strlen = len(line)
     #print(line)
     chop_begin = chop_end = False
@@ -63,7 +67,9 @@ for line in sys.stdin:
     line = word_substitute(line, homonyms_rules, 0.2)
     line = word_substitute(line, prepositions_rules, 0.2)
     line = word_substitute(line, misc_rules, 0.2)
+    line = word_delete(line, omitted_words, 0.02)
     line = strip_plural(line, 0.2)
+    line = subword_substitute(line, subword_subst, 0.02)
     line = add_plural(line, 0.02)
     line = letter_deletion(line, 0.004)
     line = letter_doubling(line, 0.004)

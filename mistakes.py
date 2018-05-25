@@ -14,6 +14,21 @@ verbs_rules = [["has", "have", "had"],
                ["understand", "understood"]
               ]
 '''
+acceptable_contractions = [["it is", "it's"],
+                           ["I am", "I'm"],
+                           ["you are", "you're"],
+                           ["he is", "he's"],
+                           ["she is", "she's"],
+                           ["we are", "we're"],
+                           ["they are", "they're"],
+                           ["cannot", "can't"],
+                           ["do not", "don't"],
+                           ["does not", "doesn't"],
+                           ["did not", "didn't"],
+                           ["should not", "shouldn't"],
+                           ["will not", "won't"]
+                          ]
+
 homonyms_rules = [["there", "their", "they're"],
                   ["to", "too", "two"],
                   ["break", "brake"],
@@ -69,6 +84,16 @@ misc_rules = [["the", "a", "an"],
               ["I", "i"]
              ]
 
+omitted_words = ["the", "a", "an", "to", "on", "of"]
+
+subword_subst = [["ea", "ee"],
+                 ["oo", "ou"],
+                 ["gth", "ght"],
+                 ["an", "en"],
+                 ["on", "un"],
+                 ["er", "ar"]
+                 ]
+
 #these are adjacent on a querty keyboard
 #adjacent_list = "poiuytrewqasdfghjkl.,mnbvcxz"
 
@@ -104,6 +129,39 @@ def word_substitute(line, rules, prob):
                 if (where > 0 and line[where-1] != ' ') or (where+word_len < len(line) and line[where+word_len] != ' '):
                     where += 1
                     continue
+                if random.random() < prob:
+                    subst = random.choice(group)
+                    line = line[:where] + subst + line[(where+word_len):]
+                where += word_len
+    return line
+
+def word_delete(line, rules, prob):
+    for word in rules:
+        word_len = len(word)
+        where = 0
+        while True:
+            pos = line[where:].find(word)
+            if pos < 0:
+                break
+            where = where + pos
+            if (where > 0 and line[where-1] != ' ') or (where+word_len < len(line) and line[where+word_len] != ' '):
+                where += 1
+                continue
+            if random.random() < prob:
+                line = line[:where] + line[(where+word_len):]
+            where += word_len
+    return line
+        
+def subword_substitute(line, rules, prob):
+    for group in rules:
+        for subword in group:
+            word_len = len(subword)
+            where = 0
+            while True:
+                pos = line[where:].find(subword)
+                if pos < 0:
+                    break
+                where = where + pos
                 if random.random() < prob:
                     subst = random.choice(group)
                     line = line[:where] + subst + line[(where+word_len):]
