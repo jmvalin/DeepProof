@@ -17,7 +17,7 @@ import deepproof_model
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.29
+config.gpu_options.per_process_gpu_memory_fraction = 0.46
 set_session(tf.Session(config=config))
 
 batch_size = 128  # Batch size for training.
@@ -50,13 +50,13 @@ model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('proof6a.h5')
+model.save('proof6b.h5')
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('proof6a2.h5')
+model.save('proof6b2.h5')
 
 
 

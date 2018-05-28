@@ -6,8 +6,10 @@ import numpy as np
 import h5py
 import sys
 import encoding
+from attnapply import AttnApply
 
 embed_dim = 64
+max_offset = 5
 latent_dim = 512  # Latent dimensionality of the encoding space.
 num_encoder_tokens = len(encoding.char_list)
 
@@ -36,6 +38,7 @@ def create(use_gpu):
     # and to return internal states as well. We don't use the
     # return states in the training model, but we will use them in inference.
     if use_gpu:
+        attn_align_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
         language_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
         decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
     else:
@@ -46,7 +49,11 @@ def create(use_gpu):
 
     language_outputs, _, _ = language_lstm(dec_lstm_input)
 
-    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, encoder_outputs])
+    align_lstm_out, _, _ = attn_align_lstm(Concatenate()([language_outputs, encoder_outputs]))
+    align_weights = Dense(2*max_offset + 1, activation='softmax')(align_lstm_out)
+    aligned_encoder = AttnApply(2*max_offset+1)([encoder_outputs, align_weights])
+    
+    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, aligned_encoder])
 
     decoder_outputs, _, _ = decoder_lstm(dec_lstm_input2,
                                          initial_state=encoder_states)
