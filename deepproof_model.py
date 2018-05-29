@@ -42,6 +42,7 @@ def create(use_gpu):
         language_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
         decoder_lstm = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
     else:
+        attn_align_lstm = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
         language_lstm = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
         decoder_lstm = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
 
@@ -50,7 +51,8 @@ def create(use_gpu):
     language_outputs, _, _ = language_lstm(dec_lstm_input)
 
     align_lstm_out, _, _ = attn_align_lstm(Concatenate()([language_outputs, encoder_outputs]))
-    align_weights = Dense(2*max_offset + 1, activation='softmax')(align_lstm_out)
+    weight_layer = Dense(2*max_offset + 1, activation='softmax')
+    align_weights = weight_layer(align_lstm_out)
     aligned_encoder = AttnApply(2*max_offset+1)([encoder_outputs, align_weights])
     
     dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, aligned_encoder])
@@ -69,17 +71,24 @@ def create(use_gpu):
     decoder_state_input_c = Input(shape=(latent_dim,))
     lang_state_input_h = Input(shape=(latent_dim,))
     lang_state_input_c = Input(shape=(latent_dim,))
-    decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c, lang_state_input_h, lang_state_input_c]
+    align_state_input_h = Input(shape=(latent_dim,))
+    align_state_input_c = Input(shape=(latent_dim,))
+    decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c, lang_state_input_h, lang_state_input_c, align_state_input_h, align_state_input_c]
     decoder_enc_inputs = Input(shape=(None, latent_dim//2))
+    decoder_enc_chunk = Input(shape=(None, latent_dim//2))
     tmp = reshape1(embed(decoder_inputs))
-    lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
+    lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:4])
+
+    align_lstm_outputs, astate_h, astate_c = attn_align_lstm(Concatenate()([lang_outputs, decoder_enc_inputs]), initial_state=decoder_states_inputs[4:])
+    align_weights_outputs = weight_layer(align_lstm_outputs)
+    aligned_encoder_outputs = AttnApply(2*max_offset+1)([decoder_enc_chunk, align_weights_outputs])
 
     decoder_outputs, state_h, state_c = decoder_lstm(
-        Concatenate()([tmp, lang_outputs, decoder_enc_inputs]), initial_state=decoder_states_inputs[0:2])
-    decoder_states = [state_h, state_c, lstate_h, lstate_c]
+        Concatenate()([tmp, lang_outputs, aligned_encoder_outputs]), initial_state=decoder_states_inputs[0:2])
+    decoder_states = [state_h, state_c, lstate_h, lstate_c, astate_h, astate_c]
     decoder_outputs = decoder_dense(decoder_outputs)
     decoder_model = Model(
-        [decoder_inputs, decoder_enc_inputs] + decoder_states_inputs,
+        [decoder_inputs, decoder_enc_inputs, decoder_enc_chunk] + decoder_states_inputs,
         [decoder_outputs] + decoder_states)
     return (encoder_model, decoder_model, model)
 
@@ -87,8 +96,8 @@ def decode_sequence(models, input_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
     encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
-    lstate_h = lstate_c = np.zeros((1, latent_dim))
-    states_value = [state_h, state_c, lstate_h, lstate_c]
+    lstate_h = lstate_c = astate_h = astate_c = np.zeros((1, latent_dim))
+    states_value = [state_h, state_c, lstate_h, lstate_c, astate_h, astate_c]
 
     # Generate empty target sequence of length 1.
     target_seq = np.zeros((1, 1, 1))
@@ -101,9 +110,10 @@ def decode_sequence(models, input_seq):
     foo=0
     prob = 0
     while foo < input_seq.shape[1]:
+        chunk = encoder_outputs[:,foo:foo+11,:]
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c, lh, lc = decoder_model.predict(
-            [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
+            [target_seq, encoder_outputs[:,foo:foo+1,:], chunk] + states_value)
 
         # Sample a token
         sampled_token_index = np.argmax(output_tokens[0, -1, :])

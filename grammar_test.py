@@ -16,12 +16,12 @@ import deepproof_model
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.29
+#config.gpu_options.per_process_gpu_memory_fraction = 0.5
 set_session(tf.Session(config=config))
 
 encoder_model, decoder_model, model = deepproof_model.create(False)
 
-model.load_weights('proof6a2.h5')
+model.load_weights('proof6b.h5')
 
 
 for line in sys.stdin:
