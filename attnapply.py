@@ -26,7 +26,7 @@ class AttnApply(Layer):
         inputs, weights = input_list
         print (inputs)
         D = self.T//2
-        inputs = K.concatenate([inputs[:, :D, :], inputs, inputs[:, -D:, :]], axis=1)
+        #inputs = K.concatenate([inputs[:, :D, :], inputs, inputs[:, -D:, :]], axis=1)
         print (inputs)
         print (weights)
         output = inputs[:, :-self.T+1, :]*weights[:, :, 0:1]

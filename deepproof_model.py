@@ -83,6 +83,7 @@ def create(use_gpu):
     align_weights_outputs = weight_layer(align_lstm_outputs)
     aligned_encoder_outputs = AttnApply(2*max_offset+1)([decoder_enc_chunk, align_weights_outputs])
 
+    print("tmp = ", tmp.shape)
     decoder_outputs, state_h, state_c = decoder_lstm(
         Concatenate()([tmp, lang_outputs, aligned_encoder_outputs]), initial_state=decoder_states_inputs[0:2])
     decoder_states = [state_h, state_c, lstate_h, lstate_c, astate_h, astate_c]
@@ -109,10 +110,11 @@ def decode_sequence(models, input_seq):
     decoded_sentence = ''
     foo=0
     prob = 0
+    encoder_outputs = np.concatenate([0*encoder_outputs[:, :5, :], encoder_outputs, 0*encoder_outputs[:, -5:, :]], axis=1)
     while foo < input_seq.shape[1]:
         chunk = encoder_outputs[:,foo:foo+11,:]
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
-        output_tokens, h, c, lh, lc = decoder_model.predict(
+        output_tokens, h, c, lh, lc, ah, ac = decoder_model.predict(
             [target_seq, encoder_outputs[:,foo:foo+1,:], chunk] + states_value)
 
         # Sample a token
@@ -126,7 +128,7 @@ def decode_sequence(models, input_seq):
         target_seq[0, 0, 0] = sampled_token_index
 
         # Update states
-        states_value = [h, c, lh, lc]
+        states_value = [h, c, lh, lc, ah, ac]
         foo = foo+1
     print(prob)
     return decoded_sentence
