@@ -53,7 +53,7 @@ def create(use_gpu):
     align_lstm_out, _, _ = attn_align_lstm(Concatenate()([language_outputs, encoder_outputs]))
     weight_layer = Dense(2*max_offset + 1, activation='softmax')
     align_weights = weight_layer(align_lstm_out)
-    aligned_encoder = AttnApply(2*max_offset+1)([encoder_outputs, align_weights])
+    aligned_encoder = AttnApply(2*max_offset+1, padding=True)([encoder_outputs, align_weights])
     
     dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, aligned_encoder])
 
@@ -83,7 +83,6 @@ def create(use_gpu):
     align_weights_outputs = weight_layer(align_lstm_outputs)
     aligned_encoder_outputs = AttnApply(2*max_offset+1)([decoder_enc_chunk, align_weights_outputs])
 
-    print("tmp = ", tmp.shape)
     decoder_outputs, state_h, state_c = decoder_lstm(
         Concatenate()([tmp, lang_outputs, aligned_encoder_outputs]), initial_state=decoder_states_inputs[0:2])
     decoder_states = [state_h, state_c, lstate_h, lstate_c, astate_h, astate_c]

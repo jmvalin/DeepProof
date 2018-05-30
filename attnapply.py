@@ -14,9 +14,10 @@ from keras import backend as K
 
 
 class AttnApply(Layer):
-    def __init__(self, T, **kwargs):
+    def __init__(self, T, padding=False, **kwargs):
         super(AttnApply, self).__init__(**kwargs)
         self.T = T
+        self.padding = padding
         #self.input_spec = InputSpec(ndim=2)
 
     #def compute_output_shape(self, input_shape):
@@ -24,13 +25,10 @@ class AttnApply(Layer):
 
     def call(self, input_list):
         inputs, weights = input_list
-        print (inputs)
         D = self.T//2
-        #inputs = K.concatenate([inputs[:, :D, :], inputs, inputs[:, -D:, :]], axis=1)
-        print (inputs)
-        print (weights)
+        if self.padding:
+            inputs = K.concatenate([0*inputs[:, :D, :], inputs, 0*inputs[:, -D:, :]], axis=1)
         output = inputs[:, :-self.T+1, :]*weights[:, :, 0:1]
-        print(output)
         for i in range(1, self.T-1):
             output = output + inputs[:, i:-self.T+i+1, :]*weights[:, :, i:i+1]
         output = output + inputs[:, self.T-1:, :]*weights[:, :, -1:]

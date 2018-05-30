@@ -6,6 +6,7 @@ from __future__ import print_function
 import math
 from keras.models import Model
 from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
+from keras.optimizers import Adam
 from keras import backend as K
 import numpy as np
 import h5py
@@ -42,21 +43,21 @@ print("Sentence length: ", input_text.shape[1])
 print("Number of chars: ", num_encoder_tokens)
 
 # Run training
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
-#model.load_weights('s2s.h5')
+model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
+model.load_weights('proof6b.h5')
 model.summary()
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('proof6b.h5')
+model.save('proof6b2.h5')
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('proof6b2.h5')
+model.save('proof6b3.h5')
 
 
 
