@@ -44,7 +44,7 @@ print("Number of chars: ", num_encoder_tokens)
 
 # Run training
 model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
-model.load_weights('proof6b.h5')
+model.load_weights('proof6b2.h5')
 model.summary()
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
