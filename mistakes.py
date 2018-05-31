@@ -44,7 +44,7 @@ homonyms_rules = [["there", "their", "they're"],
                   ["week", "weak"],
                   ["wait", "weight"],
                   ["waste", "waist"],
-                  ["sweat", "suite", "sweat"],
+                  ["sweet", "suite", "sweat"],
                   ["steel", "steal"],
                   ["steak", "stake"],
                   ["sun", "son"],
@@ -53,7 +53,9 @@ homonyms_rules = [["there", "their", "they're"],
                   ["light", "lite"],
                   ["hole", "whole"],
                   ["maid", "made"],
-                  ["fair", "fare"]
+                  ["fair", "fare"],
+                  ["write", "right"],
+                  ["advise", "advice"]
                  ]
 
 prepositions_rules = [["to", "at", "in", "for"],
@@ -65,9 +67,10 @@ prepositions_rules = [["to", "at", "in", "for"],
                      ]
 
 misc_rules = [["the", "a", "an"],
-              ["you", "your", "you're"],
-              ["I", "me", "my"],
-              ["he", "him"],
+              ["you", "your", "you're", "yours"],
+              ["I", "me", "my", "mine"],
+              ["he", "him", "his"],
+              ["she", "her", "hers"],
               ["this", "that"],
               ["excepted", "accepted"],
               ["affect", "effect"],
@@ -81,10 +84,14 @@ misc_rules = [["the", "a", "an"],
               ["an", "and"],
               ["are", "our"],
               ["not", "now"],
-              ["I", "i"]
+              ["I", "i"],
+              ["thing", "think"],
+              ["complains", "complaints"],
+              ["now", "know"],
+              ["exit", "exist"]
              ]
 
-omitted_words = ["the", "a", "an", "to", "on", "of"]
+omitted_words = ["the", "a", "an", "to", "on", "of", "is"]
 
 subword_subst = [["ea", "ee"],
                  ["oo", "ou"],
@@ -92,7 +99,7 @@ subword_subst = [["ea", "ee"],
                  ["an", "en"],
                  ["on", "un"],
                  ["er", "ar"]
-                 ]
+                ]
 
 #these are adjacent on a querty keyboard
 #adjacent_list = "poiuytrewqasdfghjkl.,mnbvcxz"
