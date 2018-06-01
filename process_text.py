@@ -67,10 +67,13 @@ for line in sys.stdin:
     line = word_substitute(line, homonyms_rules, 0.2)
     line = word_substitute(line, prepositions_rules, 0.2)
     line = word_substitute(line, misc_rules, 0.2)
+    line = word_substitute(line, comparison_rules, 0.2)
     line = word_delete(line, omitted_words, 0.02)
     line = strip_plural(line, 0.2)
-    line = subword_substitute(line, subword_subst, 0.02)
     line = add_plural(line, 0.02)
+    line = strip_punctuation(line, 0.2);
+    line = add_comma(line, 0.02);
+    line = subword_substitute(line, subword_subst, 0.02)
     line = letter_deletion(line, 0.004)
     line = letter_doubling(line, 0.004)
     line = letter_swap(line, 0.004)
@@ -101,7 +104,7 @@ for i, entry in enumerate(text):
     output_text[i,:] = byte_orig
     if i % 1000000 == 0:
         print(i, file=sys.stderr)
-    print (orig_len, encoding.decode_string(byte_line), '\t', encoding.decode_string(byte_orig))
+    #print (orig_len, encoding.decode_string(byte_line), '\t', encoding.decode_string(byte_orig))
     #print()
 
 h5f = h5py.File(sys.argv[1], 'w');

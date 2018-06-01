@@ -91,6 +91,15 @@ misc_rules = [["the", "a", "an"],
               ["exit", "exist"]
              ]
 
+comparison_rules = [["better", "good", "best"],
+                    ["worse", "bad", "worst"],
+                    ["more", "most"],
+                    ["slower", "slow", "slowest"],
+                    ["faster", "fast", "fastest"],
+                    ["larger", "large", "largest"],
+                    ["smaller", "small", "smallest"]
+                   ]
+
 omitted_words = ["the", "a", "an", "to", "on", "of", "is"]
 
 subword_subst = [["ea", "ee"],
@@ -98,7 +107,9 @@ subword_subst = [["ea", "ee"],
                  ["gth", "ght"],
                  ["an", "en"],
                  ["on", "un"],
-                 ["er", "ar"]
+                 ["er", "ar"],
+                 ["'s", "s'"],
+                 ["n't", "n't not"]
                 ]
 
 #these are adjacent on a querty keyboard
@@ -200,6 +211,35 @@ def add_plural(line, prob):
         where += pos
         if random.random() < prob:
             line = line[:where+1] + 's' + line[where+1:]
+        where += 4
+    return line
+
+def strip_punctuation(line, prob):
+    where = 0
+    while True:
+        pos = re.search("[,.;:]", line[where:])
+        if pos:
+            pos = pos.start()
+        else:
+            break
+        where += pos
+        if random.random() < prob:
+            line = line[:where] + line[where+1:]
+        where += 2
+    return line
+
+#FIXME: How do we treat other punctuation marks?
+def add_comma(line, prob):
+    where = 0
+    while True:
+        pos = re.search("[a-zA-Z][ $]", line[where:])
+        if pos:
+            pos = pos.start()
+        else:
+            break
+        where += pos
+        if random.random() < prob:
+            line = line[:where+1] + ',' + line[where+1:]
         where += 4
     return line
 
