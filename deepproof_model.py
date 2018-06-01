@@ -1,6 +1,6 @@
 import math
 from keras.models import Model
-from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
+from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D, Multiply
 from keras import backend as K
 import numpy as np
 import h5py
@@ -17,15 +17,19 @@ def create(use_gpu):
     encoder_inputs = Input(shape=(None, 1))
     reshape1 = Reshape((-1, embed_dim))
     reshape2 = Reshape((-1, embed_dim))
-    conv = Conv1D(latent_dim//2, 5, padding='same', activation='tanh')
+    conv1a = Conv1D(latent_dim, 11, padding='same', activation='tanh')
+    conv1b = Conv1D(latent_dim, 11, padding='same', activation='sigmoid')
     embed = Embedding(num_encoder_tokens, embed_dim)
     if use_gpu:
         encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
     else:
         encoder = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True, go_backwards=True)
-    encoder_outputs, state_h, state_c = encoder(conv(reshape1(embed(encoder_inputs))))
+    emb = reshape1(embed(encoder_inputs));
+    c1a = conv1a(emb)
+    c1b = conv1b(emb)
+    encoder_outputs, state_h, state_c = encoder(Multiply()([c1a, c1b]))
     rev = Lambda(lambda x: K.reverse(x, 1))
-    conv2 = Conv1D(latent_dim//2, 5, dilation_rate=2, padding='same', activation='tanh')
+    conv2 = Conv1D(latent_dim, 5, dilation_rate=2, padding='same', activation='tanh')
 
     encoder_outputs = conv2(rev(encoder_outputs))
     encoder_states = [state_h, state_c]
@@ -63,7 +67,7 @@ def create(use_gpu):
     lang_state_input_h = Input(shape=(latent_dim,))
     lang_state_input_c = Input(shape=(latent_dim,))
     decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c, lang_state_input_h, lang_state_input_c]
-    decoder_enc_inputs = Input(shape=(None, latent_dim//2))
+    decoder_enc_inputs = Input(shape=(None, latent_dim))
     tmp = reshape1(embed(decoder_inputs))
     lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
 
