@@ -4,16 +4,17 @@ import random
 import math
 import re
 from irregular import irregular_verbs
-'''
-verbs_rules = [["has", "have", "had"],
-               ["was", "were", "are", "is"],
-               ["go", "gone", "went", "goes"],
-               ["be", "been"],
-               ["know", "knew"],
-               ["do", "did", "does"],
-               ["understand", "understood"]
-              ]
-'''
+
+def extend_cap(rules):
+    cap = []
+    for r in rules:
+        new = []
+        for word in r:
+            tmp = word[0].upper() + word[1:]
+            new = new + [tmp]
+        cap = cap + [new]
+    rules += cap
+
 acceptable_contractions = [["it is", "it's"],
                            ["I am", "I'm"],
                            ["you are", "you're"],
@@ -28,6 +29,7 @@ acceptable_contractions = [["it is", "it's"],
                            ["should not", "shouldn't"],
                            ["will not", "won't"]
                           ]
+extend_cap(acceptable_contractions)
 
 homonyms_rules = [["there", "their", "they're"],
                   ["to", "too", "two"],
@@ -57,6 +59,7 @@ homonyms_rules = [["there", "their", "they're"],
                   ["write", "right"],
                   ["advise", "advice"]
                  ]
+extend_cap(homonyms_rules)
 
 prepositions_rules = [["to", "at", "in", "for"],
                       ["out", "off"],
@@ -65,6 +68,7 @@ prepositions_rules = [["to", "at", "in", "for"],
                       ["from", "than"],
                       ["on", "at"]
                      ]
+extend_cap(prepositions_rules)
 
 misc_rules = [["the", "a", "an"],
               ["you", "your", "you're", "yours"],
@@ -90,6 +94,7 @@ misc_rules = [["the", "a", "an"],
               ["now", "know"],
               ["exit", "exist"]
              ]
+extend_cap(misc_rules)
 
 comparison_rules = [["better", "good", "best"],
                     ["worse", "bad", "worst"],
@@ -99,6 +104,7 @@ comparison_rules = [["better", "good", "best"],
                     ["larger", "large", "largest"],
                     ["smaller", "small", "smallest"]
                    ]
+extend_cap(comparison_rules)
 
 omitted_words = ["the", "a", "an", "to", "on", "of", "is"]
 
