@@ -1,6 +1,6 @@
 import math
 from keras.models import Model
-from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D, Multiply, Bidirectional
+from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D, Multiply, Bidirectional, MaxPooling1D, Activation
 from keras import backend as K
 import numpy as np
 import h5py
@@ -9,8 +9,24 @@ import encoding
 
 embed_dim = 64
 latent_dim = 512  # Latent dimensionality of the encoding space.
+attn_dim = 128
 num_encoder_tokens = len(encoding.char_list)
 
+def compute_attention_weights(inputs):
+    x, y = inputs
+    #print("x = ", x)
+    #print("y = ", y)
+    #print("px = ", K.permute_dimensions(x, (0,2,1)))
+    output = K.batch_dot(x, K.permute_dimensions(y, (0,2,1)))
+    return output
+
+def apply_attention_weights(inputs):
+    x, y = inputs
+    #print("x = ", x)
+    #print("y = ", y)
+    #print("px = ", K.permute_dimensions(x, (0,2,1)))
+    output = K.batch_dot(x, y)
+    return output
 
 def create(use_gpu):
     # Define an input sequence and process it.
@@ -32,6 +48,7 @@ def create(use_gpu):
     rev = Lambda(lambda x: K.reverse(x, 1))
     conv2 = Conv1D(latent_dim, 5, dilation_rate=2, padding='same', activation='tanh')
 
+    encoder_outputs = MaxPooling1D()(encoder_outputs)
     #encoder_outputs = conv2(rev(encoder_outputs))
     encoder_states = [state_h, state_c]
 
@@ -51,7 +68,15 @@ def create(use_gpu):
 
     language_outputs, _, _ = language_lstm(dec_lstm_input)
 
-    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, encoder_outputs])
+    enc_attn_input = Dense(attn_dim, activation='tanh')(encoder_outputs)
+    dec_attn_input = Dense(attn_dim, activation='linear')(language_outputs)
+    compute_attn = Lambda(compute_attention_weights)
+    attn_weights = Activation('softmax')(compute_attn([dec_attn_input, enc_attn_input]))
+    #Apply softmax
+    apply_attn = Lambda(apply_attention_weights)
+    attn_output = apply_attn([attn_weights, encoder_outputs])
+    
+    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, attn_output])
 
     decoder_outputs, _, _ = decoder_lstm(dec_lstm_input2,
                                          initial_state=encoder_states)
