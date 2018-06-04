@@ -43,8 +43,8 @@ print("Sentence length: ", input_text.shape[1])
 print("Number of chars: ", num_encoder_tokens)
 
 # Run training
-model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
-#model.load_weights('proof7b3.h5')
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
+#model.load_weights('proof7c.h5')
 model.summary()
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
@@ -52,6 +52,7 @@ model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           validation_split=0.2)
 # Save model
 model.save('proof7c.h5')
+model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,

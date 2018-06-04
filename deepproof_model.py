@@ -14,17 +14,11 @@ num_encoder_tokens = len(encoding.char_list)
 
 def compute_attention_weights(inputs):
     x, y = inputs
-    #print("x = ", x)
-    #print("y = ", y)
-    #print("px = ", K.permute_dimensions(x, (0,2,1)))
     output = K.batch_dot(x, K.permute_dimensions(y, (0,2,1)))
     return output
 
 def apply_attention_weights(inputs):
     x, y = inputs
-    #print("x = ", x)
-    #print("y = ", y)
-    #print("px = ", K.permute_dimensions(x, (0,2,1)))
     output = K.batch_dot(x, y)
     return output
 
@@ -68,11 +62,12 @@ def create(use_gpu):
 
     language_outputs, _, _ = language_lstm(dec_lstm_input)
 
-    enc_attn_input = Dense(attn_dim, activation='tanh')(encoder_outputs)
-    dec_attn_input = Dense(attn_dim, activation='linear')(language_outputs)
+    d1 = Dense(attn_dim, activation='tanh')
+    d2 = Dense(attn_dim, activation='linear')
+    enc_attn_input = d1(encoder_outputs)
+    dec_attn_input = d2(language_outputs)
     compute_attn = Lambda(compute_attention_weights)
     attn_weights = Activation('softmax')(compute_attn([dec_attn_input, enc_attn_input]))
-    #Apply softmax
     apply_attn = Lambda(apply_attention_weights)
     attn_output = apply_attn([attn_weights, encoder_outputs])
     
@@ -97,8 +92,15 @@ def create(use_gpu):
     tmp = reshape1(embed(decoder_inputs))
     lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
 
+    enc_attn_input = d1(decoder_enc_inputs)
+    dec_attn_input = d2(lang_outputs)
+    compute_attn = Lambda(compute_attention_weights)
+    attn_weights = Activation('softmax')(compute_attn([dec_attn_input, enc_attn_input]))
+    apply_attn = Lambda(apply_attention_weights)
+    attn_output = apply_attn([attn_weights, decoder_enc_inputs])
+
     decoder_outputs, state_h, state_c = decoder_lstm(
-        Concatenate()([tmp, lang_outputs, decoder_enc_inputs]), initial_state=decoder_states_inputs[0:2])
+        Concatenate()([tmp, lang_outputs, attn_output]), initial_state=decoder_states_inputs[0:2])
     decoder_states = [state_h, state_c, lstate_h, lstate_c]
     decoder_outputs = decoder_dense(decoder_outputs)
     decoder_model = Model(
