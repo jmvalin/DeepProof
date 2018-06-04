@@ -1,6 +1,6 @@
 import math
 from keras.models import Model
-from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D, Multiply
+from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D, Multiply, Bidirectional
 from keras import backend as K
 import numpy as np
 import h5py
@@ -21,17 +21,18 @@ def create(use_gpu):
     conv1b = Conv1D(latent_dim, 11, padding='same', activation='sigmoid')
     embed = Embedding(num_encoder_tokens, embed_dim)
     if use_gpu:
-        encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True, go_backwards=True)
+        encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
     else:
-        encoder = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True, go_backwards=True)
+        encoder = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
+    encoder = Bidirectional(encoder, merge_mode='sum')
     emb = reshape1(embed(encoder_inputs));
     c1a = conv1a(emb)
     c1b = conv1b(emb)
-    encoder_outputs, state_h, state_c = encoder(Multiply()([c1a, c1b]))
+    encoder_outputs, state_h, state_c, _, _ = encoder(Multiply()([c1a, c1b]))
     rev = Lambda(lambda x: K.reverse(x, 1))
     conv2 = Conv1D(latent_dim, 5, dilation_rate=2, padding='same', activation='tanh')
 
-    encoder_outputs = conv2(rev(encoder_outputs))
+    #encoder_outputs = conv2(rev(encoder_outputs))
     encoder_states = [state_h, state_c]
 
     # Set up the decoder, using `encoder_states` as initial state.
