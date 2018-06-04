@@ -128,7 +128,7 @@ def decode_sequence(models, input_seq):
     while foo < input_seq.shape[1]:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c, lh, lc = decoder_model.predict(
-            [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
+            [target_seq, encoder_outputs] + states_value)
 
         # Sample a token
         sampled_token_index = np.argmax(output_tokens[0, -1, :])
@@ -158,7 +158,7 @@ def beam_decode_sequence(models, input_seq):
         out_nbest = []
         for prob, decoded_sentence, target_seq, states_value in in_nbest:
             output_tokens, h, c, lh, lc = decoder_model.predict(
-                [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
+                [target_seq, encoder_outputs] + states_value)
             arg = np.argsort(output_tokens[0, -1, :])
             # Sample a token
             # Update states
@@ -205,7 +205,7 @@ def decode_ground_truth(models, input_seq, output_seq):
     while foo < input_seq.shape[1]:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c, lh, lc = decoder_model.predict(
-            [target_seq, encoder_outputs[:,foo:foo+1,:]] + states_value)
+            [target_seq, encoder_outputs] + states_value)
 
         # Sample a token
         sampled_token_index = output_seq[foo]
