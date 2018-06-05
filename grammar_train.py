@@ -18,7 +18,7 @@ import deepproof_model
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.47
+config.gpu_options.per_process_gpu_memory_fraction = 0.44
 set_session(tf.Session(config=config))
 
 batch_size = 128  # Batch size for training.
@@ -51,23 +51,23 @@ model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('proof7c.h5')
+model.save('proof7d.h5')
 model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
-model.save('proof7c1.h5')
+model.save('proof7d1.h5')
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
-model.save('proof7c2.h5')
+model.save('proof7d2.h5')
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
-model.save('proof7c3.h5')
+model.save('proof7d3.h5')
 
 
 

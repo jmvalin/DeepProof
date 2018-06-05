@@ -32,9 +32,12 @@ def create(use_gpu):
     embed = Embedding(num_encoder_tokens, embed_dim)
     if use_gpu:
         encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
+        encoder2 = CuDNNLSTM(latent_dim//2, return_sequences=True)
     else:
         encoder = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
-    encoder = Bidirectional(encoder, merge_mode='sum')
+        encoder2 = LSTM(latent_dim//2, recurrent_activation="sigmoid", return_sequences=True)
+    encoder = Bidirectional(encoder, merge_mode='concat')
+    encoder2 = Bidirectional(encoder2, merge_mode='concat')
     emb = reshape1(embed(encoder_inputs));
     c1a = conv1a(emb)
     c1b = conv1b(emb)
@@ -43,6 +46,7 @@ def create(use_gpu):
     conv2 = Conv1D(latent_dim, 5, dilation_rate=2, padding='same', activation='tanh')
 
     encoder_outputs = MaxPooling1D()(encoder_outputs)
+    encoder_outputs = MaxPooling1D()(encoder2(encoder_outputs))
     #encoder_outputs = conv2(rev(encoder_outputs))
     encoder_states = [state_h, state_c]
 
