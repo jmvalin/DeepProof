@@ -9,7 +9,7 @@ import encoding
 
 embed_dim = 64
 latent_dim = 512  # Latent dimensionality of the encoding space.
-attn_dim = 128
+attn_dim = 256
 num_encoder_tokens = len(encoding.char_list)
 
 def compute_attention_weights(inputs):
@@ -45,6 +45,7 @@ def create(use_gpu):
     rev = Lambda(lambda x: K.reverse(x, 1))
     conv2 = Conv1D(latent_dim, 5, dilation_rate=2, padding='same', activation='tanh')
 
+    first_encoder_outputs = encoder_outputs
     encoder_outputs = MaxPooling1D()(encoder_outputs)
     encoder_outputs = MaxPooling1D()(encoder2(encoder_outputs))
     #encoder_outputs = conv2(rev(encoder_outputs))
@@ -75,7 +76,8 @@ def create(use_gpu):
     apply_attn = Lambda(apply_attention_weights)
     attn_output = apply_attn([attn_weights, encoder_outputs])
     
-    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, attn_output])
+    print(attn_output, first_encoder_outputs)
+    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, attn_output, first_encoder_outputs])
 
     decoder_outputs, _, _ = decoder_lstm(dec_lstm_input2,
                                          initial_state=encoder_states)
@@ -85,7 +87,7 @@ def create(use_gpu):
     model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
     #The following is needed for inference (one at a time decoding) only
-    encoder_model = Model(encoder_inputs, [encoder_outputs, state_h, state_c])
+    encoder_model = Model(encoder_inputs, [encoder_outputs, first_encoder_outputs, state_h, state_c])
 
     decoder_state_input_h = Input(shape=(latent_dim,))
     decoder_state_input_c = Input(shape=(latent_dim,))
@@ -93,6 +95,7 @@ def create(use_gpu):
     lang_state_input_c = Input(shape=(latent_dim,))
     decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c, lang_state_input_h, lang_state_input_c]
     decoder_enc_inputs = Input(shape=(None, latent_dim))
+    first_decoder_enc_inputs = Input(shape=(None, 2*latent_dim))
     tmp = reshape1(embed(decoder_inputs))
     lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
 
@@ -103,19 +106,20 @@ def create(use_gpu):
     apply_attn = Lambda(apply_attention_weights)
     attn_output = apply_attn([attn_weights, decoder_enc_inputs])
 
+    print(attn_output, first_decoder_enc_inputs)
     decoder_outputs, state_h, state_c = decoder_lstm(
-        Concatenate()([tmp, lang_outputs, attn_output]), initial_state=decoder_states_inputs[0:2])
+        Concatenate()([tmp, lang_outputs, attn_output, first_decoder_enc_inputs]), initial_state=decoder_states_inputs[0:2])
     decoder_states = [state_h, state_c, lstate_h, lstate_c]
     decoder_outputs = decoder_dense(decoder_outputs)
     decoder_model = Model(
-        [decoder_inputs, decoder_enc_inputs] + decoder_states_inputs,
+        [decoder_inputs, decoder_enc_inputs, first_decoder_enc_inputs] + decoder_states_inputs,
         [decoder_outputs] + decoder_states)
     return (encoder_model, decoder_model, model)
 
 def decode_sequence(models, input_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
-    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
+    encoder_outputs, first_encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
     lstate_h = lstate_c = np.zeros((1, latent_dim))
     states_value = [state_h, state_c, lstate_h, lstate_c]
 
@@ -132,7 +136,7 @@ def decode_sequence(models, input_seq):
     while foo < input_seq.shape[1]:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c, lh, lc = decoder_model.predict(
-            [target_seq, encoder_outputs] + states_value)
+            [target_seq, encoder_outputs, first_encoder_outputs[:,foo:foo+1,:]] + states_value)
 
         # Sample a token
         sampled_token_index = np.argmax(output_tokens[0, -1, :])
@@ -154,7 +158,7 @@ def beam_decode_sequence(models, input_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
     B = 10
-    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
+    encoder_outputs, first_encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
     lstate_h = lstate_c = np.zeros((1, latent_dim))
     in_nbest=[(0., '', np.array([[[0]]]), [state_h, state_c, lstate_h, lstate_c])]
     foo=0
@@ -162,7 +166,7 @@ def beam_decode_sequence(models, input_seq):
         out_nbest = []
         for prob, decoded_sentence, target_seq, states_value in in_nbest:
             output_tokens, h, c, lh, lc = decoder_model.predict(
-                [target_seq, encoder_outputs] + states_value)
+                [target_seq, encoder_outputs, first_encoder_outputs[:,foo:foo+1,:]] + states_value)
             arg = np.argsort(output_tokens[0, -1, :])
             # Sample a token
             # Update states
@@ -192,7 +196,7 @@ def beam_decode_sequence(models, input_seq):
 def decode_ground_truth(models, input_seq, output_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
-    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
+    encoder_outputs, first_encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
     lstate_h = lstate_c = np.zeros((1, latent_dim))
     states_value = [state_h, state_c, lstate_h, lstate_c]
 
@@ -209,7 +213,7 @@ def decode_ground_truth(models, input_seq, output_seq):
     while foo < input_seq.shape[1]:
         #target_seq[0, 0, 0] = input_seq[0, foo, 0]
         output_tokens, h, c, lh, lc = decoder_model.predict(
-            [target_seq, encoder_outputs] + states_value)
+            [target_seq, encoder_outputs, first_encoder_outputs[:,foo:foo+1,:]] + states_value)
 
         # Sample a token
         sampled_token_index = output_seq[foo]

@@ -51,23 +51,23 @@ model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           epochs=epochs,
           validation_split=0.2)
 # Save model
-model.save('proof7d.h5')
+model.save('proof7e.h5')
 model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
-model.save('proof7d1.h5')
+model.save('proof7e2.h5')
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
-model.save('proof7d2.h5')
+model.save('proof7e3.h5')
 model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,
           validation_split=0.2)
-model.save('proof7d3.h5')
+model.save('proof7e4.h5')
 
 
 
