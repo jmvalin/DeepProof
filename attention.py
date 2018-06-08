@@ -2,6 +2,7 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras.layers import activations, initializers, regularizers, constraints, InputSpec
 import numpy as np
+import math
 
 class Attention(Layer):
     """Just your regular densely-connected NN layer.
@@ -57,6 +58,7 @@ class Attention(Layer):
             kwargs['input_shape'] = (kwargs.pop('input_dim'),)
         super(Attention, self).__init__(**kwargs)
         self.units = units
+        self.scaling = 1/math.sqrt(self.units)
         self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
@@ -111,7 +113,7 @@ class Attention(Layer):
             k = K.bias_add(k, self.key_bias)
         if self.activation is not None:
             q = self.activation(q)
-        weights = K.softmax(K.batch_dot(q, k, axes=[2,2]))
+        weights = K.softmax(self.scaling*K.batch_dot(q, k, axes=[2,2]))
         output = K.batch_dot(weights, values)
         return output
 
