@@ -44,12 +44,8 @@ def create(use_gpu):
     c1a = conv1a(emb)
     c1b = conv1b(emb)
     encoder_outputs, state_h, state_c, _, _ = encoder(Multiply()([c1a, c1b]))
-    rev = Lambda(lambda x: K.reverse(x, 1))
-    conv2 = Conv1D(latent_dim, 5, dilation_rate=2, padding='same', activation='tanh')
 
-    encoder_outputs = MaxPooling1D()(encoder_outputs)
-    encoder_outputs = MaxPooling1D()(encoder2(encoder_outputs))
-    #encoder_outputs = conv2(rev(encoder_outputs))
+    encoder_outputs = encoder2(encoder_outputs)
     encoder_states = [state_h, state_c]
 
     # Set up the decoder, using `encoder_states` as initial state.
