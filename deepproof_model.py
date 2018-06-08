@@ -6,6 +6,7 @@ import numpy as np
 import h5py
 import sys
 import encoding
+from multihead import MultiHead
 
 embed_dim = 64
 latent_dim = 512  # Latent dimensionality of the encoding space.
@@ -14,7 +15,7 @@ num_encoder_tokens = len(encoding.char_list)
 
 def compute_attention_weights(inputs):
     x, y = inputs
-    output = K.batch_dot(x, K.permute_dimensions(y, (0,2,1)))
+    output = K.batch_dot(x, y, axes=[2,2])
     return output
 
 def apply_attention_weights(inputs):
@@ -67,22 +68,10 @@ def create(use_gpu):
 
     language_outputs, _, _ = language_lstm(dec_lstm_input)
 
-    compute_attn = Lambda(compute_attention_weights)
-    apply_attn = Lambda(apply_attention_weights)
-    d1a = Dense(attn_dim, activation='tanh')
-    d1b = Dense(attn_dim, activation='tanh')
-    d2a = Dense(attn_dim, activation='linear')
-    d2b = Dense(attn_dim, activation='linear')
-    enc_attn_input1 = d1a(encoder_outputs)
-    dec_attn_input1 = d2a(language_outputs)
-    attn_weights1 = Activation('softmax')(compute_attn([dec_attn_input1, enc_attn_input1]))
-    attn_output1 = apply_attn([attn_weights1, encoder_outputs])
-    enc_attn_input2 = d1b(encoder_outputs)
-    dec_attn_input2 = d2b(language_outputs)
-    attn_weights2 = Activation('softmax')(compute_attn([dec_attn_input2, enc_attn_input2]))
-    attn_output2 = apply_attn([attn_weights2, encoder_outputs])
+    attn = MultiHead(128, activation='tanh')
+    attn_output = attn([language_outputs, encoder_outputs, encoder_outputs])
     
-    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, attn_output1, attn_output2])
+    dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, attn_output])
 
     decoder_outputs, _, _ = decoder_lstm(dec_lstm_input2,
                                          initial_state=encoder_states)
@@ -104,17 +93,10 @@ def create(use_gpu):
     tmp = reshape1(embed(decoder_inputs))
     lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
 
-    enc_attn_input1 = d1a(decoder_enc_inputs)
-    dec_attn_input1 = d2a(lang_outputs)
-    enc_attn_input2 = d1b(decoder_enc_inputs)
-    dec_attn_input2 = d2b(lang_outputs)
-    attn_weights1 = Activation('softmax')(compute_attn([dec_attn_input1, enc_attn_input1]))
-    attn_output1 = apply_attn([attn_weights1, decoder_enc_inputs])
-    attn_weights2 = Activation('softmax')(compute_attn([dec_attn_input2, enc_attn_input2]))
-    attn_output2 = apply_attn([attn_weights2, decoder_enc_inputs])
+    attn_output = attn([lang_outputs, decoder_enc_inputs, decoder_enc_inputs])
 
     decoder_outputs, state_h, state_c = decoder_lstm(
-        Concatenate()([tmp, lang_outputs, attn_output1, attn_output2]), initial_state=decoder_states_inputs[0:2])
+        Concatenate()([tmp, lang_outputs, attn_output]), initial_state=decoder_states_inputs[0:2])
     decoder_states = [state_h, state_c, lstate_h, lstate_c]
     decoder_outputs = decoder_dense(decoder_outputs)
     decoder_model = Model(
