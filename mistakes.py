@@ -4,6 +4,7 @@ import random
 import math
 import re
 from irregular import irregular_verbs
+from regular import regular_verbs
 
 def extend_cap(rules):
     cap = []
@@ -92,7 +93,8 @@ misc_rules = [["the", "a", "an"],
               ["thing", "think"],
               ["complains", "complaints"],
               ["now", "know"],
-              ["exit", "exist"]
+              ["exit", "exist"],
+              ["whether", "if"]
              ]
 extend_cap(misc_rules)
 
@@ -106,7 +108,7 @@ comparison_rules = [["better", "good", "best"],
                    ]
 extend_cap(comparison_rules)
 
-omitted_words = ["the", "a", "an", "to", "on", "of", "is"]
+omitted_words = ["the", "a", "an", "to", "on", "of", "is", "that"]
 
 subword_subst = [["ea", "ee"],
                  ["oo", "ou"],
@@ -137,8 +139,9 @@ for verb in irregular_verbs:
         verb = verb[:-1]
     irregular_rules = irregular_rules + [verb]
     #print(verb);
-
+extend_cap(irregular_rules)
 #print(irregular_rules)
+extend_cap(regular_verbs)
 
 def word_substitute(line, rules, prob):
     for group in rules:
@@ -172,8 +175,28 @@ def word_delete(line, rules, prob):
                 where += 1
                 continue
             if random.random() < prob:
-                line = line[:where] + line[(where+word_len):]
+                if where > 0 and line[where-1] == ' ':
+                    line = line[:where-1] + line[(where+word_len):]
+                else:
+                    line = line[:where] + line[(where+word_len+1):]                  
             where += word_len
+    return line
+
+def word_double(line, rules, prob):
+    for word in rules:
+        word_len = len(word)
+        where = 0
+        while True:
+            pos = line[where:].find(word)
+            if pos < 0:
+                break
+            where = where + pos
+            if (where > 0 and line[where-1] != ' ') or (where+word_len < len(line) and line[where+word_len] != ' '):
+                where += 1
+                continue
+            if random.random() < prob:
+                line = line[:where] + word + " " + line[(where):]
+            where += 2*word_len+2
     return line
         
 def subword_substitute(line, rules, prob):

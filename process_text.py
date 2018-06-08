@@ -64,11 +64,13 @@ for line in sys.stdin:
     #print (orig)
     #continue
     line = word_substitute(line, irregular_rules, 0.2)
+    line = word_substitute(line, regular_verbs, 0.2)
     line = word_substitute(line, homonyms_rules, 0.2)
     line = word_substitute(line, prepositions_rules, 0.2)
     line = word_substitute(line, misc_rules, 0.2)
     line = word_substitute(line, comparison_rules, 0.2)
     line = word_delete(line, omitted_words, 0.02)
+    line = word_double(line, omitted_words, 0.02)
     line = strip_plural(line, 0.2)
     line = add_plural(line, 0.02)
     line = strip_punctuation(line, 0.2);
