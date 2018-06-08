@@ -2,6 +2,7 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras.layers import activations, initializers, regularizers, constraints, InputSpec
 import numpy as np
+import math
 
 class MultiHead(Layer):
     """Just your regular densely-connected NN layer.
@@ -73,6 +74,7 @@ class MultiHead(Layer):
 
     def build(self, input_shape):
         self.heads = input_shape[2][-1]//self.units
+        self.scaling = 1/math.sqrt(self.units)
         assert len(input_shape) >= 2
         query_dim = input_shape[0][-1]
         key_dim = input_shape[1][-1]
@@ -120,7 +122,7 @@ class MultiHead(Layer):
                 k = K.bias_add(k, self.key_bias[i,:])
             if self.activation is not None:
                 q = self.activation(q)
-            weights = K.softmax(K.batch_dot(q, k, axes=[2,2]))
+            weights = K.softmax(self.scaling*K.batch_dot(q, k, axes=[2,2]))
             val = K.dot(values, self.value_kernel[i,:,:])
             out = K.batch_dot(weights, val)
             out_list.append(out)
