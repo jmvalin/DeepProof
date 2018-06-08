@@ -114,17 +114,17 @@ class MultiHead(Layer):
     def call(self, inputs):
         queries, keys, values = inputs
         out_list = []
+        query = K.dot(queries, self.query_kernel)
+        key = K.dot(keys, self.key_kernel)
+        value = K.dot(values, self.value_kernel)
+        if self.use_bias:
+            query = query + self.query_bias
+            key = key + self.key_bias
+        if self.activation is not None:
+            query = self.scaling*self.activation(query)
         for i in range(self.heads):
-            q = K.dot(queries, self.query_kernel[i,:,:])
-            k = K.dot(keys, self.key_kernel[i,:,:])
-            if self.use_bias:
-                q = K.bias_add(q, self.query_bias[i,:])
-                k = K.bias_add(k, self.key_bias[i,:])
-            if self.activation is not None:
-                q = self.activation(q)
-            weights = K.softmax(self.scaling*K.batch_dot(q, k, axes=[2,2]))
-            val = K.dot(values, self.value_kernel[i,:,:])
-            out = K.batch_dot(weights, val)
+            weights = K.softmax(K.batch_dot(query[:, :, i, :], key[:, :, i, :], axes=[2,2]))
+            out = K.batch_dot(weights, value[:, :, i, :])
             out_list.append(out)
         output = K.concatenate(out_list, axis=-1)
         return output
