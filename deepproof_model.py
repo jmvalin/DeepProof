@@ -10,19 +10,10 @@ from multihead import MultiHead
 from attention import Attention
 
 embed_dim = 64
+encoder_dim = 384
 latent_dim = 512  # Latent dimensionality of the encoding space.
 attn_dim = 128
 num_encoder_tokens = len(encoding.char_list)
-
-def compute_attention_weights(inputs):
-    x, y = inputs
-    output = K.batch_dot(x, y, axes=[2,2])
-    return output
-
-def apply_attention_weights(inputs):
-    x, y = inputs
-    output = K.batch_dot(x, y)
-    return output
 
 def create(use_gpu):
     # Define an input sequence and process it.
@@ -33,22 +24,20 @@ def create(use_gpu):
     conv1b = Conv1D(latent_dim, 11, padding='same', activation='sigmoid')
     embed = Embedding(num_encoder_tokens, embed_dim)
     if use_gpu:
-        encoder = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
-        encoder2 = CuDNNLSTM(latent_dim//2, return_sequences=True)
+        encoder = CuDNNLSTM(encoder_dim, return_sequences=True)
+        encoder2 = CuDNNLSTM(encoder_dim, return_sequences=True)
     else:
-        encoder = LSTM(latent_dim, recurrent_activation="sigmoid", return_sequences=True, return_state=True)
-        encoder2 = LSTM(latent_dim//2, recurrent_activation="sigmoid", return_sequences=True)
+        encoder = LSTM(encoder_dim, recurrent_activation="sigmoid", return_sequences=True)
+        encoder2 = LSTM(encoder_dim, recurrent_activation="sigmoid", return_sequences=True)
     encoder = Bidirectional(encoder, merge_mode='concat')
     encoder2 = Bidirectional(encoder2, merge_mode='concat')
     emb = reshape1(embed(encoder_inputs));
     c1a = conv1a(emb)
     c1b = conv1b(emb)
-    encoder_outputs, state_h, state_c, _, _ = encoder(Multiply()([c1a, c1b]))
+    encoder_outputs = encoder(Multiply()([c1a, c1b]))
 
     encoder_outputs = encoder2(encoder_outputs)
-    encoder_states = [state_h, state_c]
-
-    # Set up the decoder, using `encoder_states` as initial state.
+    
     decoder_inputs = Input(shape=(None, 1))
     # We set up our decoder to return full output sequences,
     # and to return internal states as well. We don't use the
@@ -69,23 +58,21 @@ def create(use_gpu):
     
     dec_lstm_input2 = Concatenate()([dec_lstm_input, language_outputs, attn_output])
 
-    decoder_outputs, _, _ = decoder_lstm(dec_lstm_input2,
-                                         initial_state=encoder_states)
+    decoder_outputs, _, _ = decoder_lstm(dec_lstm_input2)
     decoder_dense = Dense(num_encoder_tokens, activation='softmax')
     decoder_outputs = decoder_dense(decoder_outputs)
 
     model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
     #The following is needed for inference (one at a time decoding) only
-    encoder_model = Model(encoder_inputs, [encoder_outputs, state_h, state_c])
+    encoder_model = Model(encoder_inputs, [encoder_outputs])
 
     decoder_state_input_h = Input(shape=(latent_dim,))
     decoder_state_input_c = Input(shape=(latent_dim,))
     lang_state_input_h = Input(shape=(latent_dim,))
     lang_state_input_c = Input(shape=(latent_dim,))
     decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c, lang_state_input_h, lang_state_input_c]
-    decoder_enc_inputs = Input(shape=(None, latent_dim))
-    first_decoder_enc_inputs = Input(shape=(None, 2*latent_dim))
+    decoder_enc_inputs = Input(shape=(None, 2*encoder_dim))
     tmp = reshape1(embed(decoder_inputs))
     lang_outputs, lstate_h, lstate_c = language_lstm(tmp, initial_state=decoder_states_inputs[2:])
 
@@ -96,15 +83,15 @@ def create(use_gpu):
     decoder_states = [state_h, state_c, lstate_h, lstate_c]
     decoder_outputs = decoder_dense(decoder_outputs)
     decoder_model = Model(
-        [decoder_inputs, decoder_enc_inputs, first_decoder_enc_inputs] + decoder_states_inputs,
+        [decoder_inputs, decoder_enc_inputs] + decoder_states_inputs,
         [decoder_outputs] + decoder_states)
     return (encoder_model, decoder_model, model)
 
 def decode_sequence(models, input_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
-    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
-    lstate_h = lstate_c = np.zeros((1, latent_dim))
+    encoder_outputs = encoder_model.predict(input_seq[:,:,0:1])
+    state_h = state_c = lstate_h = lstate_c = np.zeros((1, latent_dim))
     states_value = [state_h, state_c, lstate_h, lstate_c]
 
     # Generate empty target sequence of length 1.
@@ -142,8 +129,8 @@ def beam_decode_sequence(models, input_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
     B = 10
-    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
-    lstate_h = lstate_c = np.zeros((1, latent_dim))
+    encoder_outputs = encoder_model.predict(input_seq[:,:,0:1])
+    state_h = state_c = lstate_h = lstate_c = np.zeros((1, latent_dim))
     in_nbest=[(0., '', np.array([[[0]]]), [state_h, state_c, lstate_h, lstate_c])]
     foo=0
     while foo < input_seq.shape[1]:
@@ -180,8 +167,8 @@ def beam_decode_sequence(models, input_seq):
 def decode_ground_truth(models, input_seq, output_seq):
     [encoder_model, decoder_model] = models
     # Encode the input as state vectors.
-    encoder_outputs, state_h, state_c = encoder_model.predict(input_seq[:,:,0:1])
-    lstate_h = lstate_c = np.zeros((1, latent_dim))
+    encoder_outputs = encoder_model.predict(input_seq[:,:,0:1])
+    state_h = state_c = lstate_h = lstate_c = np.zeros((1, latent_dim))
     states_value = [state_h, state_c, lstate_h, lstate_c]
 
     # Generate empty target sequence of length 1.
