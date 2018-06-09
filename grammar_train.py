@@ -26,9 +26,16 @@ epochs = 1  # Number of epochs to train for.
 
 encoder_model, decoder_model, model = deepproof_model.create(True)
 
-with h5py.File(sys.argv[1], 'r') as hf:
-    input_text = hf['input'][:]
-    output_text = hf['output'][:]
+input_text = None
+output_text = None
+for file in sys.argv[1:]:
+    with h5py.File(file, 'r') as hf:
+        if input_text is None:
+            input_text = hf['input'][:]
+            output_text = hf['output'][:]
+        else:
+            input_text = np.concatenate([input_text, hf['input'][:]])
+            output_text = np.concatenate([output_text, hf['output'][:]])
 #input_text = input_text[0:8000, :]
 #output_text = output_text[0:8000, :]
 input_data = np.reshape(input_text, (input_text.shape[0], input_text.shape[1], 1))
