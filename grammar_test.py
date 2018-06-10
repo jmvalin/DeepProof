@@ -21,12 +21,12 @@ set_session(tf.Session(config=config))
 
 encoder_model, decoder_model, model = deepproof_model.create(False)
 
-model.load_weights('proof7e.h5')
+model.load_weights('proof8b3.h5')
 
 
 for line in sys.stdin:
     line = line.rstrip()
-    input_seq = encoding.encode_string(line, 300, 0)
+    input_seq = encoding.encode_string(line, len(line)+20, 0)
     input_seq = np.reshape(input_seq, (1, input_seq.shape[0], 1))
     decoded_sentence0 = deepproof_model.decode_sequence([encoder_model, decoder_model], input_seq)
     decoded_sentence = deepproof_model.beam_decode_sequence([encoder_model, decoder_model], input_seq)
