@@ -6,7 +6,6 @@ import numpy as np
 import h5py
 import sys
 import encoding
-from multihead import MultiHead
 from attention import Attention
 
 embed_dim = 64

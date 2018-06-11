@@ -21,7 +21,7 @@ set_session(tf.Session(config=config))
 
 encoder_model, decoder_model, model = deepproof_model.create(False)
 
-model.load_weights('proof8b3.h5')
+model.load_weights('proof8b4.h5')
 
 
 for line in sys.stdin:
