@@ -7,6 +7,8 @@ import math
 from keras.models import Model
 from keras.layers import Input, LSTM, CuDNNLSTM, Dense, Embedding, Reshape, Concatenate, Lambda, Conv1D
 from keras.optimizers import Adam
+from keras.utils import Sequence
+from keras.callbacks import ModelCheckpoint
 from keras import backend as K
 import numpy as np
 import h5py
@@ -22,9 +24,35 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.44
 set_session(tf.Session(config=config))
 
 batch_size = 128  # Batch size for training.
-epochs = 1  # Number of epochs to train for.
+epochs = 4  # Number of epochs to train for.
 
 encoder_model, decoder_model, model = deepproof_model.create(True)
+
+class GrammarSequence(Sequence):
+
+    def __init__(self, x1_set, x2_set, y_set, batch_size, validation_split=0.2, test=False):
+        if test:
+            self.x1 = x1_set[int(1+x1_set.shape[0]*(1-validation_split)):,:,:]
+            self.x2 = x2_set[int(1+x2_set.shape[0]*(1-validation_split)):,:,:]
+            self.y = y_set[int(1+y_set.shape[0]*(1-validation_split)):,:,:]
+        else:
+            self.x1 = x1_set[:int(x1_set.shape[0]*(1-validation_split)),:,:]
+            self.x2 = x2_set[:int(x2_set.shape[0]*(1-validation_split)),:,:]
+            self.y = y_set[:int(y_set.shape[0]*(1-validation_split)),:,:]
+        self.batch_size = batch_size
+        self.pe = np.repeat(deepproof_model.position_matrix(300, deepproof_model.pe_dim), batch_size, axis=0)
+
+    def __len__(self):
+        return len(self.x1) // self.batch_size
+
+    def __getitem__(self, idx):
+        batch_x1 = self.x1[idx * self.batch_size:(idx + 1) * self.batch_size, :, :]
+        batch_x2 = self.x2[idx * self.batch_size:(idx + 1) * self.batch_size, :, :]
+        batch_y = self.y[idx * self.batch_size:(idx + 1) * self.batch_size, :, :]
+        #print(batch_x.shape)
+        #print(batch_y.shape)
+
+        return [self.pe, batch_x1, batch_x2], batch_y
 
 input_text = None
 output_text = None
@@ -53,29 +81,21 @@ print("Number of chars: ", num_encoder_tokens)
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
 #model.load_weights('proof7c.h5')
 model.summary()
-model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_split=0.2)
-# Save model
-model.save('proof8b.h5')
-model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
-model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_split=0.2)
-model.save('proof8b2.h5')
-model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_split=0.2)
-model.save('proof8b3.h5')
-model.fit([input_data[:,:,0:1], decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_split=0.2)
-model.save('proof8b4.h5')
+gen_train = GrammarSequence(input_data[:,:,0:1], decoder_input_data, decoder_target_data, batch_size)
+gen_test = GrammarSequence(input_data[:,:,0:1], decoder_input_data, decoder_target_data, batch_size, test=True)
+checkpoint = ModelCheckpoint('proof8d_{epoch:02d}.h5')
 
+model.fit_generator(gen_train,
+          callbacks=[checkpoint],
+          epochs=1,
+          validation_data=gen_test)
+
+model.compile(optimizer=Adam(0.0003), loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
+model.fit_generator(gen_train,
+          callbacks=[checkpoint],
+          initial_epoch=1,
+          epochs=epochs,
+          validation_data=gen_test)
 
 
 start = int(.9*input_text.shape[0])
